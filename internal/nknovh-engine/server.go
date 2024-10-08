@@ -1,85 +1,84 @@
 package nknovh_engine
 
 import (
-		"net/http"
-		"templater"
-		"github.com/gobwas/ws"
-		"github.com/gobwas/ws/wsutil"
-		"github.com/julienschmidt/httprouter"
-		"fmt"
-		"sync"
-		"net"
-		"log"
-		"encoding/json"
-		"strconv"
-		"errors"
-		"time"
-		"os"
-		)
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"os"
+	"strconv"
+	"sync"
+	"templater"
+	"time"
 
+	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
+	"github.com/julienschmidt/httprouter"
+)
 
 type WebHelper struct {
 	temp *templater.Templater
 }
 
 type Web struct {
-	Response map[int]WSReply
-	Helper *WebHelper
-	Methods map[string]func(*WSQuery,*CLIENT) (error, WSReply)
-	MethodsReqAuth []string
+	Response        map[int]WSReply
+	Helper          *WebHelper
+	Methods         map[string]func(*WSQuery, *CLIENT) (error, WSReply)
+	MethodsReqAuth  []string
 	MethodsReadOnly []string
-	MethodsToAll []string
-	WsPool *WsPool
+	MethodsToAll    []string
+	WsPool          *WsPool
 }
 
 type WsPool struct {
-	Clients map[int]*WsClients
+	Clients   map[int]*WsClients
 	ActiveIps map[string]int
-	i uint64
-	mu sync.RWMutex
-	mu_ips sync.RWMutex
+	i         uint64
+	mu        sync.RWMutex
+	mu_ips    sync.RWMutex
 }
 
 type WsClients struct {
 	list map[uint64]*CLIENT
-	mu sync.RWMutex
+	mu   sync.RWMutex
 }
 
 type WSQuery struct {
-	Method string `json:"Method"`
-	Value map[string]interface{} `json:"Value,omitempty"`
+	Method string                 `json:"Method"`
+	Value  map[string]interface{} `json:"Value,omitempty"`
 }
-		
+
 type WSReply struct {
-	Method string `json:"Method"`
-	Code int `json:"Code"`
-	Error bool `json:"Error,omitempty`
+	Method     string `json:"Method"`
+	Code       int    `json:"Code"`
+	Error      bool   `json:"Error,omitempty`
 	ErrMessage string `json:"ErrMessage,omitempty"`
-	Value interface{}
+	Value      interface{}
 }
 
 type Netstatus struct {
 	Relays              int64   `json:"relays"`
- 	AverageUptime       int     `json:"average_uptime"`
+	AverageUptime       int     `json:"average_uptime"`
 	AverageRelays       uint64  `json:"average_relays"`
 	RelaysPerHour       uint64  `json:"relays_per_hour"`
 	ProposalSubmitted   int     `json:"proposalSubmitted"`
 	PersistNodesCount   int     `json:"persist_nodes_count"`
 	NodesCount          int     `json:"nodes_count"`
- 	LastHeight          int     `json:"last_height"`
- 	LastTimestamp       uint64  `json:"last_timestamp"`
- 	AverageBlockTime    float64 `json:"average_blockTime"`
+	LastHeight          int     `json:"last_height"`
+	LastTimestamp       uint64  `json:"last_timestamp"`
+	AverageBlockTime    float64 `json:"average_blockTime"`
 	AverageBlocksPerDay float64 `json:"average_blocksPerDay"`
 	LatestUpdate        string  `json:"latest_update"`
 }
 
-
 type CLIENT struct {
-	HashId int
-	Ip string
-	ReadOnly bool
-	ConnId uint64
-	NotWs bool
+	HashId       int
+	Ip           string
+	ReadOnly     bool
+	ConnId       uint64
+	NotWs        bool
 	WsConnection net.Conn
 }
 
@@ -100,7 +99,7 @@ func (o *NKNOVH) RegisterMethods() {
 	o.Web.Methods["rmnodes"] = o.apiRmNodes
 	o.Web.Methods["rmnodesbyip"] = o.apiRmNodesByIp
 	o.Web.Methods["getdaemon"] = o.apiDaemon
-	o.Web.Methods["getlanguage"] = o .apiLanguage
+	o.Web.Methods["getlanguage"] = o.apiLanguage
 	o.Web.Methods["savemysettings"] = o.apiSaveSettings
 	o.Web.Methods["getnodedetails"] = o.apiGetNodeDetails
 	o.Web.Methods["getnodeipbypublickey"] = o.apiGetNodeIpByPublicKey
@@ -147,7 +146,6 @@ func (o *NKNOVH) RegisterResponse() {
 	//The code 29 reserved by apiGetNodeDetails
 	o.Web.Response[30] = WSReply{Code: 30, Error: true, ErrMessage: "NodeState structure of your node has invalid format"}
 
-
 	o.Web.Response[230] = WSReply{Code: 230, Error: true, ErrMessage: "No view variable passed, the variable must be string"}
 	o.Web.Response[231] = WSReply{Code: 231, Error: true, ErrMessage: "No Locale variable passed, the variable must be string"}
 	o.Web.Response[232] = WSReply{Code: 232, Error: true, ErrMessage: "Locale or View passed variables are overflow"}
@@ -174,14 +172,13 @@ func (o *NKNOVH) InternalErrorJson(w http.ResponseWriter, errx error) {
 	w.WriteHeader(500)
 	res := o.Web.Response[500]
 	if errx != nil {
-		o.log.Syslog("Internal server error: " + errx.Error(), "http")
+		o.log.Syslog("Internal server error: "+errx.Error(), "http")
 	}
 	if b, err := json.Marshal(res); err == nil {
 		w.Write(b)
 	}
 	return
 }
-
 
 func (o *NKNOVH) WsClientCreate(conn net.Conn) *CLIENT {
 	t := time.Now()
@@ -201,7 +198,7 @@ func (o *NKNOVH) WsClientCreate(conn net.Conn) *CLIENT {
 		v.mu.Unlock()
 	}
 	t_x := time.Now().Sub(t).String()
-	o.log.Syslog("WsClientCreate time: " + t_x, "debug")
+	o.log.Syslog("WsClientCreate time: "+t_x, "debug")
 
 	//ONLY FOR DEBUG MODE
 	cnt := 0
@@ -212,7 +209,7 @@ func (o *NKNOVH) WsClientCreate(conn net.Conn) *CLIENT {
 		o.Web.WsPool.Clients[i].mu.RUnlock()
 	}
 	o.Web.WsPool.mu.RUnlock()
-	o.log.Syslog("Active ws connections: " + strconv.Itoa(cnt), "debug")
+	o.log.Syslog("Active ws connections: "+strconv.Itoa(cnt), "debug")
 	return c
 }
 
@@ -224,7 +221,7 @@ func (o *NKNOVH) WsClientClose(c *CLIENT) {
 	o.WsMultiConnectDecrease(c.Ip)
 	o.WsClientGC(c)
 	t_x := time.Now().Sub(t).String()
-	o.log.Syslog("WsClientClose time: " + t_x, "debug")
+	o.log.Syslog("WsClientClose time: "+t_x, "debug")
 	return
 }
 
@@ -246,12 +243,12 @@ func (o *NKNOVH) WsClientUpdate(c *CLIENT, hashId int) {
 	o.WsClientGC(c)
 
 	debugf := func() {
-			for x, _ := range o.Web.WsPool.Clients {
-				for i, _ := range o.Web.WsPool.Clients[x].list {
-					s := fmt.Sprintf("HashId: %v >> Context: %v", x, o.Web.WsPool.Clients[x].list[i])
-					o.log.Syslog(s, "debug")
-				}
+		for x, _ := range o.Web.WsPool.Clients {
+			for i, _ := range o.Web.WsPool.Clients[x].list {
+				s := fmt.Sprintf("HashId: %v >> Context: %v", x, o.Web.WsPool.Clients[x].list[i])
+				o.log.Syslog(s, "debug")
 			}
+		}
 	}
 	c.HashId = hashId
 	o.Web.WsPool.mu.Lock()
@@ -269,7 +266,7 @@ func (o *NKNOVH) WsClientUpdate(c *CLIENT, hashId int) {
 		v.mu.Unlock()
 	}
 	t_x := time.Now().Sub(t).String()
-	o.log.Syslog("WsClientUpdate time: " + t_x, "debug")
+	o.log.Syslog("WsClientUpdate time: "+t_x, "debug")
 
 	return
 }
@@ -283,9 +280,9 @@ func (o *NKNOVH) WsRestrictMultiConnect(ip string) (error, WSReply) {
 		o.Web.WsPool.ActiveIps[ip] = 1
 		return nil, WSReply{}
 	} else {
-		o.Web.WsPool.ActiveIps[ip] = o.Web.WsPool.ActiveIps[ip]+1
+		o.Web.WsPool.ActiveIps[ip] = o.Web.WsPool.ActiveIps[ip] + 1
 		if o.Web.WsPool.ActiveIps[ip] > limit {
-			o.log.Syslog("Connections limit is reached from IP " + ip, "debug")
+			o.log.Syslog("Connections limit is reached from IP "+ip, "debug")
 			q := new(WSQuery)
 			q.Method = "other"
 			_, wsreply := o.WsError(q, 1002)
@@ -324,7 +321,7 @@ func (o *NKNOVH) WsPolling(w http.ResponseWriter, r *http.Request, _ httprouter.
 		defer o.WsClientClose(c)
 		ip, err := o.getIp(o.conf.TrustedProxies, r)
 		if err != nil {
-			o.log.Syslog("getIp returned an error: " + err.Error(), "wshttp")
+			o.log.Syslog("getIp returned an error: "+err.Error(), "wshttp")
 			return
 		}
 		c.Ip = ip
@@ -359,11 +356,11 @@ func (o *NKNOVH) WsPolling(w http.ResponseWriter, r *http.Request, _ httprouter.
 				conn.SetReadDeadline(time.Now().Add(time.Second * 30))
 				continue
 			}
-			o.log.Syslog("WS Request from " + c.Ip + "; Message: " + string(msg), "wshttp")
+			o.log.Syslog("WS Request from "+c.Ip+"; Message: "+string(msg), "wshttp")
 
 			q := new(WSQuery)
 			if err := json.Unmarshal(msg, q); err != nil {
-				o.log.Syslog("Cannot unmarshal json to WSQuery: " + err.Error(), "errors")
+				o.log.Syslog("Cannot unmarshal json to WSQuery: "+err.Error(), "errors")
 				return
 			}
 			if _, ok := o.Web.Methods[q.Method]; !ok {
@@ -424,7 +421,7 @@ func (o *NKNOVH) CreateIndex(w http.ResponseWriter, r *http.Request, _ httproute
 	if err, x := getEtag("web/static/lib.wasm"); err == nil {
 		t.Set("wasm_etag", strconv.FormatInt(x, 10))
 	}
-    w.Write(t.View())
+	w.Write(t.View())
 }
 
 func (o *NKNOVH) apiPOST(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -435,18 +432,18 @@ func (o *NKNOVH) apiPOST(w http.ResponseWriter, r *http.Request, params httprout
 	ip, err := o.getIp(o.conf.TrustedProxies, r)
 	if err != nil {
 		o.InternalErrorJson(w, err)
-		o.log.Syslog("getIp returned an error: " + err.Error(), "http")
+		o.log.Syslog("getIp returned an error: "+err.Error(), "http")
 		return
 	}
-	c := &CLIENT{HashId: -1, Ip: ip, NotWs: true,}
-	o.log.Syslog("POST Request from " + c.Ip, "http")
+	c := &CLIENT{HashId: -1, Ip: ip, NotWs: true}
+	o.log.Syslog("POST Request from "+c.Ip, "http")
 
 	var hash string
 	var ok bool
 	data := new(WSQuery)
 	value := map[string]interface{}{}
 
-	r.Body = http.MaxBytesReader(w, r.Body, MaxBytesReader) 
+	r.Body = http.MaxBytesReader(w, r.Body, MaxBytesReader)
 
 	// application/x-www-form-urlencoded
 	err = r.ParseForm()
@@ -518,7 +515,7 @@ func (o *NKNOVH) apiPOST(w http.ResponseWriter, r *http.Request, params httprout
 
 		mauth := map[string]interface{}{}
 		mauth["Hash"] = hash
-		auth := &WSQuery{Method: "auth", Value: mauth, }
+		auth := &WSQuery{Method: "auth", Value: mauth}
 
 		_, reply := o.apiAuth(auth, c)
 
@@ -536,12 +533,11 @@ func (o *NKNOVH) apiPOST(w http.ResponseWriter, r *http.Request, params httprout
 	_, reply := o.Web.Methods[data.Method](data, c)
 	if i := FindStringInSlice(o.Web.MethodsToAll, data.Method); i != len(o.Web.MethodsToAll) {
 		o.WsSendByHashId(&reply, c.HashId)
-	} 
-	
-	o.WriteJson(&reply, w)
-	return 
-}
+	}
 
+	o.WriteJson(&reply, w)
+	return
+}
 
 func (o *NKNOVH) WriteJson(data *WSReply, w http.ResponseWriter) error {
 	var b = make([]byte, 0)
@@ -604,11 +600,11 @@ func (o *NKNOVH) Listen() {
 
 	s := &http.Server{
 		Addr:           ":" + strconv.Itoa(o.conf.HttpServer.Port),
-		Handler:		router,
+		Handler:        router,
 		ReadTimeout:    30 * time.Second,
 		WriteTimeout:   30 * time.Second,
 		MaxHeaderBytes: 1 << 20,
-}
+	}
 
 	//log.Fatal(http.ListenAndServe(":" + strconv.Itoa(o.conf.HttpServer.Port), router))
 	log.Fatal(s.ListenAndServe())

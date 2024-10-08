@@ -1,3 +1,3 @@
-module internal/xwasmapi
+module github.com/nkn.ovh/internal/xwasmapi
 
-go 1.15
+go 1.22.5

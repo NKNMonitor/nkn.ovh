@@ -1,8 +1,9 @@
 package nknovh_engine
 
 import (
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"log"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 func (o *NKNOVH) tgPoll() error {

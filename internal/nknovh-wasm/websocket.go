@@ -1,24 +1,26 @@
+//go:build js && wasm
+
 package nknovh_wasm
 
 import (
-		"syscall/js"
-		"encoding/json"
-		"fmt"
-		"time"
-		"sync"
+	"encoding/json"
+	"fmt"
+	"sync"
+	"syscall/js"
+	"time"
 )
 
 type WSQuery struct {
-	Method string `json:"Method"`
-	Value map[string]interface{} `json:"Value, omitempty"`
+	Method string                 `json:"Method"`
+	Value  map[string]interface{} `json:"Value, omitempty"`
 }
-		
+
 type WSReply struct {
-	Method string `json:"Method"`
-	Code int `json:"Code"`
-	Error bool `json:"Error, omitempty`
-	ErrMessage string `json:"ErrMessage, omitempty"`
-	Value map[string]interface{} `json: "Value, omitempty"`
+	Method     string                 `json:"Method"`
+	Code       int                    `json:"Code"`
+	Error      bool                   `json:"Error, omitempty`
+	ErrMessage string                 `json:"ErrMessage, omitempty"`
+	Value      map[string]interface{} `json: "Value, omitempty"`
 }
 
 func (c *CLIENT) WsOnOpen() {
@@ -66,7 +68,7 @@ func (c *CLIENT) SetLanguage(view string, locale string) {
 		c.W.LocalStorage("set", "lang", locale)
 	} else {
 		if err, storage_lang := c.W.LocalStorage("get", "lang"); err == nil {
-			locale = storage_lang 
+			locale = storage_lang
 		} else {
 			locale = c.Conf.DefaultLanguage
 		}
@@ -125,7 +127,7 @@ func (c *CLIENT) WsOnClose() {
 				last = x
 				sec_elem.Set("innerHTML", x)
 
-			break
+				break
 			}
 		}
 	}
@@ -163,7 +165,7 @@ func (c *CLIENT) WsOnClose() {
 				if y == 0 {
 					rchan_tick.Stop()
 					rchan <- -10
-			
+
 					return
 				}
 				if y == 1 {
@@ -174,10 +176,10 @@ func (c *CLIENT) WsOnClose() {
 						c.WsOnMessage()
 						c.mux.Websocket.Unlock()
 						tick_checker.Reset(1 * time.Millisecond)
-						looping:
+					looping:
 						for {
 							select {
-								case <-tick_checker.C:
+							case <-tick_checker.C:
 								x := c.ws.Get("readyState").Int()
 								if x == 1 {
 									ch <- x
@@ -208,7 +210,7 @@ func (c *CLIENT) WsOnClose() {
 			go checkstatus()
 			for {
 				select {
-					case x := <-ch:
+				case x := <-ch:
 					if x == 1 {
 						c.mux.Websocket.Lock()
 						c.WsOnClose()
@@ -224,7 +226,7 @@ func (c *CLIENT) WsOnClose() {
 						continue
 					}
 				}
-			}	
+			}
 		}()
 		return nil
 	})
@@ -239,7 +241,7 @@ func (c *CLIENT) WsOnMessage() {
 		// It is pong
 		if inJson[0] == 50 {
 			return nil
-		// It is ping
+			// It is ping
 		} else if inJson[0] == 49 {
 			c.ws.Call("send", "2")
 			return nil
@@ -301,7 +303,7 @@ func (c *CLIENT) WsGenId() {
 	data := new(WSQuery)
 	data.Method = "genid"
 	b, _ := json.Marshal(data)
-	c.ws.Call("send", string(b)) 
+	c.ws.Call("send", string(b))
 	return
 }
 

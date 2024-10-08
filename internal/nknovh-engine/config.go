@@ -1,14 +1,19 @@
 package nknovh_engine
 
 import (
-		"os"
-		"encoding/json"
-	)
+	"encoding/json"
+	"fmt"
+	"os"
+	"reflect"
+
+	"github.com/joho/godotenv"
+)
 
 func (o *configuration) configure() (*configuration, error) {
+	//Static configuration
 	f, err := os.Open("conf.json")
 	if err != nil {
-		return &configuration{}, err	
+		return &configuration{}, err
 	}
 	defer f.Close()
 	decoder := json.NewDecoder(f)
@@ -17,5 +22,28 @@ func (o *configuration) configure() (*configuration, error) {
 	if err != nil {
 		return &configuration{}, err
 	}
-	return &conf,nil
+	//Container configuration
+	if env := os.Getenv("ENVIRONMENT"); env == "dev" {
+		err := godotenv.Load()
+		if err != nil {
+			fmt.Println("No .env files found. Using real environment")
+		}
+
+	}
+	v := reflect.ValueOf(&conf).Elem()
+	t := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		f := t.Field(i)
+		varName, _ := f.Tag.Lookup("env")
+		if varName == "-" {
+			continue
+		}
+		env, ok := os.LookupEnv(varName)
+		if ok {
+			v.Field(i).SetString(env)
+		}
+
+	}
+	return &conf, nil
 }

@@ -1,10 +1,12 @@
+//go:build js && wasm
+
 package nknovh_wasm
 
 import (
-		"syscall/js"
-		"encoding/json"
-		"fmt"
-		"strconv"
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"syscall/js"
 )
 
 func (c *CLIENT) apiLanguage(data *WSReply) interface{} {
@@ -17,17 +19,17 @@ func (c *CLIENT) apiLanguage(data *WSReply) interface{} {
 	}
 	locale, ok := data.Value["Locale"].(string)
 	if !ok {
-		js.Global().Call("alert","No Locale string passed in callback func")
+		js.Global().Call("alert", "No Locale string passed in callback func")
 		return false
 	}
 	view, ok := data.Value["View"].(string)
 	if !ok {
-		js.Global().Call("alert","No View string passed in callback func")
+		js.Global().Call("alert", "No View string passed in callback func")
 		return false
 	}
 	value, ok := data.Value["Data"].(string)
 	if !ok {
-		js.Global().Call("alert","No Data string passed in callback func")
+		js.Global().Call("alert", "No Data string passed in callback func")
 		return false
 	}
 
@@ -40,7 +42,7 @@ func (c *CLIENT) apiLanguage(data *WSReply) interface{} {
 	}
 	c.LANG = LANG
 	c.Cached.Lang[locale] = LANG
-	
+
 	//parsing
 	c.handlingLangPages(view, locale)
 	return true
@@ -68,7 +70,7 @@ func (c *CLIENT) apiOther(data *WSReply) interface{} {
 }
 
 func (c *CLIENT) apiAuth(data *WSReply) interface{} {
-	if data.Error  {
+	if data.Error {
 		if c.Hash != "" {
 			c.Hash = ""
 			c.W.LocalStorage("remove", "hash")
@@ -158,12 +160,12 @@ func (c *CLIENT) apiGetNodeDetails(data *WSReply) interface{} {
 	}
 	sid := strconv.Itoa(nodeid)
 	nodeerr := "nodeLookupErr-" + sid
-	nodeload := "nodeLookupLoading-" +sid
-	nodeinfo := "nodeLookupInfo-" +sid
+	nodeload := "nodeLookupLoading-" + sid
+	nodeinfo := "nodeLookupInfo-" + sid
 
 	infodiv := doc.Call("getElementById", nodeinfo)
 	if !infodiv.Truthy() {
-		fmt.Println(nodeinfo+ " is not found")
+		fmt.Println(nodeinfo + " is not found")
 		return false
 	}
 
@@ -179,7 +181,7 @@ func (c *CLIENT) apiGetNodeDetails(data *WSReply) interface{} {
 		b, _ := json.Marshal(data.Value["NodeStats"])
 		err := json.Unmarshal(b, lookup)
 		if err != nil {
-			c.GenErr("The error occured while decoding:" + err.Error(), "default", -1, nodeerr)
+			c.GenErr("The error occured while decoding:"+err.Error(), "default", -1, nodeerr)
 			c.W.HideById(nodeload)
 			c.W.ShowById(nodeerr)
 			return false
@@ -206,7 +208,7 @@ func (c *CLIENT) apiGetNodeDetails(data *WSReply) interface{} {
 		b, _ := json.Marshal(data.Value["NodeError"])
 		err := json.Unmarshal(b, lookup)
 		if err != nil {
-			c.GenErr("The error occured while decoding:" + err.Error(), "default", -1, nodeerr)
+			c.GenErr("The error occured while decoding:"+err.Error(), "default", -1, nodeerr)
 			c.W.HideById(nodeload)
 			c.W.ShowById(nodeerr)
 			return false
@@ -241,7 +243,7 @@ func (c *CLIENT) apiGetNodeDetails(data *WSReply) interface{} {
 		c.W.ShowById(nodeinfo)
 	}
 	return true
-} 
+}
 
 func (c *CLIENT) apiAddNodes(data *WSReply) interface{} {
 	doc := js.Global().Get("document")
@@ -260,11 +262,11 @@ func (c *CLIENT) apiAddNodes(data *WSReply) interface{} {
 
 	c.ShowHideModal("addNodes", "hide")
 	/*
-	c.W.ShowById("completedQuery")
-	js.Global().Call("setTimeout", js.FuncOf(func(_ js.Value, _ []js.Value) interface{} {
-		c.W.HideById("completedQuery")
-		return nil
-	}), 1500)
+		c.W.ShowById("completedQuery")
+		js.Global().Call("setTimeout", js.FuncOf(func(_ js.Value, _ []js.Value) interface{} {
+			c.W.HideById("completedQuery")
+			return nil
+		}), 1500)
 	*/
 	//partial
 	c.WsSend("getmynodes")
@@ -293,7 +295,7 @@ func (c *CLIENT) apiRmNodes(data *WSReply) interface{} {
 	}
 	doc := js.Global().Get("document")
 	for i, _ := range nodes {
-		rmnode := doc.Call("getElementById", "Node-" + strconv.Itoa(nodes[i]))
+		rmnode := doc.Call("getElementById", "Node-"+strconv.Itoa(nodes[i]))
 		c.W.Remove(&rmnode)
 	}
 	ca := doc.Call("getElementById", "control-all")
@@ -305,7 +307,6 @@ func (c *CLIENT) apiRmNodes(data *WSReply) interface{} {
 	c.WsSend("getmynodes")
 	return nil
 }
-
 
 func (c *CLIENT) apiMyNodes(data *WSReply) interface{} {
 	if data.Error {
@@ -319,20 +320,20 @@ func (c *CLIENT) apiMyNodes(data *WSReply) interface{} {
 		return false
 	}
 	switch x := data.Code; x {
-		case 0:
-			c.W.HideById("nodes_nf")
-			c.Nodes = nodes
-			c.PreSortNodes()
-			c.SortAndParseNodes()
-			c.calcNodesSummary()
+	case 0:
+		c.W.HideById("nodes_nf")
+		c.Nodes = nodes
+		c.PreSortNodes()
+		c.SortAndParseNodes()
+		c.calcNodesSummary()
 
 		break
-		case 3:
-			c.W.ShowById("nodes_nf")
-			c.Nodes = &Nodes{}
-			c.PreSortNodes()
-			c.SortAndParseNodes()
-			c.calcNodesSummary()
+	case 3:
+		c.W.ShowById("nodes_nf")
+		c.Nodes = &Nodes{}
+		c.PreSortNodes()
+		c.SortAndParseNodes()
+		c.calcNodesSummary()
 		break
 	}
 	return nil
@@ -347,11 +348,11 @@ func (c *CLIENT) apiSaveSettings(data *WSReply) interface{} {
 	c.WsSend("getmywallets")
 	c.ShowHideModal("settings", "hide")
 	/*
-	c.W.ShowById("completedQuery")
-	js.Global().Call("setTimeout", js.FuncOf(func(_ js.Value, _ []js.Value) interface{} {
-		c.W.HideById("completedQuery")
-		return nil
-	}), 1500)
+		c.W.ShowById("completedQuery")
+		js.Global().Call("setTimeout", js.FuncOf(func(_ js.Value, _ []js.Value) interface{} {
+			c.W.HideById("completedQuery")
+			return nil
+		}), 1500)
 	*/
 	return nil
 }

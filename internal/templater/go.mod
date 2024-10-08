@@ -1,3 +1,3 @@
-module internal/templater
+module github.com/nkn.ovh/internal/templater
 
-go 1.15
+go 1.22.5

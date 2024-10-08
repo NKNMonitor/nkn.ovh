@@ -1,9 +1,11 @@
+//go:build js && wasm
+
 package nknovh_wasm
 
 import (
-		"syscall/js"
-		"strconv"
-		"fmt"
+	"fmt"
+	"strconv"
+	"syscall/js"
 )
 
 func (c *CLIENT) RegisterJSFuncs() {
@@ -68,14 +70,14 @@ func (c *CLIENT) RegisterJSFuncs() {
 		return nil
 	}))
 	js.Global().Set("prevPage", js.FuncOf(func(_ js.Value, _ []js.Value) interface{} {
-		c.SetPage(c.CurrentPage-1)
+		c.SetPage(c.CurrentPage - 1)
 		return nil
 	}))
 	js.Global().Set("nextPage", js.FuncOf(func(_ js.Value, _ []js.Value) interface{} {
-		c.SetPage(c.CurrentPage+1)
+		c.SetPage(c.CurrentPage + 1)
 		return nil
 	}))
-	
+
 	js.Global().Set("addWalletLabels", js.FuncOf(func(_ js.Value, _ []js.Value) interface{} {
 		c.AddWalletLabels(true)
 		return nil

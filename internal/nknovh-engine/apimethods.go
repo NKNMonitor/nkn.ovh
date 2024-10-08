@@ -1,18 +1,20 @@
 package nknovh_engine
 
 import (
-		"database/sql"
-		_ "github.com/go-sql-driver/mysql"
-		"errors"
-		"math"
-		"regexp"
-		"net"
-		"strings"
-		"strconv"
-		"io/ioutil"
-		"fmt"
-		"time"
-		"encoding/json"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"math"
+	"net"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+	"go.uber.org/zap"
 )
 
 func (o *NKNOVH) updateUniqWatch(c *CLIENT) error {
@@ -21,7 +23,7 @@ func (o *NKNOVH) updateUniqWatch(c *CLIENT) error {
 	}
 	_, err := o.sql.stmt["main"]["WebUpdateUniqWatch"].Exec(c.HashId)
 	if err != nil {
-		o.log.Syslog("Cannot execute WebUpdateUniqWatch", "sql")
+		o.log.Error("Cannot execute WebUpdateUniqWatch", zap.Error(err))
 		return err
 	}
 	return nil
@@ -41,7 +43,6 @@ func (o *NKNOVH) WsError(q *WSQuery, code int, cb_value ...bool) (err error, r W
 	return nil, WSReply{Method: q.Method, Code: -1, Error: true, ErrMessage: "Response key is not found"}
 }
 
-
 func (o *NKNOVH) WsSendByHashId(r *WSReply, hashId int) error {
 	o.Web.WsPool.mu.RLock()
 	defer o.Web.WsPool.mu.RUnlock()
@@ -56,7 +57,7 @@ func (o *NKNOVH) WsSendByHashId(r *WSReply, hashId int) error {
 			continue
 		}
 		if err := o.WriteJsonWs(r, c); err != nil {
-			o.log.Syslog(err.Error(), "wshttp")
+			o.log.Error("wshttp", zap.Error(err))
 		}
 	}
 	return nil
@@ -94,7 +95,7 @@ func (o *NKNOVH) apiGetNodeIpByPublicKey(q *WSQuery, c *CLIENT) (err error, r WS
 	m := map[string]interface{}{}
 	m["IpList"] = db_ips
 
-	return nil, WSReply{Method: q.Method, Code: 0, Value: m,}
+	return nil, WSReply{Method: q.Method, Code: 0, Value: m}
 }
 
 func (o *NKNOVH) apiGetNodeDetails(q *WSQuery, c *CLIENT) (err error, r WSReply) {
@@ -120,13 +121,13 @@ func (o *NKNOVH) apiGetNodeDetails(q *WSQuery, c *CLIENT) (err error, r WSReply)
 	row := o.sql.stmt["main"]["WebSelectNodeInfoById+HashId"].QueryRow(node_id, c.HashId)
 	err = row.Scan(&node_name, &node_ip)
 	switch {
-		case err == sql.ErrNoRows:
-			return o.WsError(q, 18, true)
-		case err != nil:
-			return o.WsError(q, 1, true)
+	case err == sql.ErrNoRows:
+		return o.WsError(q, 18, true)
+	case err != nil:
+		return o.WsError(q, 1, true)
 	}
 	var data NodeSt
-	state := &JsonRPCConf{Ip:node_ip, Method:"getnodestate", Params: &json.RawMessage{'{','}'}, Client: o.http.MainClient, UnmarshalData: &data.State}
+	state := &JsonRPCConf{Ip: node_ip, Method: "getnodestate", Params: &json.RawMessage{'{', '}'}, Client: o.http.MainClient, UnmarshalData: &data.State}
 
 	t1 := time.Now()
 	res, err := o.jrpc_get(state)
@@ -144,15 +145,14 @@ func (o *NKNOVH) apiGetNodeDetails(q *WSQuery, c *CLIENT) (err error, r WSReply)
 		r := o.respErrorHandling(data.State.Error)
 		m["NodeError"] = r
 		m["NodeId"] = node_id
-		return nil, WSReply{Method: q.Method, Code: 29, Value: m,}
+		return nil, WSReply{Method: q.Method, Code: 29, Value: m}
 	}
 
 	if b := o.Validator.IsNodeStateValid(&data.State); !b {
 		return o.WsError(q, 30, true)
 	}
 
-
-	neighbor := &JsonRPCConf{Ip:node_ip, Method:"getneighbor", Params: &json.RawMessage{'{','}'}, Client: o.http.MainClient, UnmarshalData: &data.Neighbor}
+	neighbor := &JsonRPCConf{Ip: node_ip, Method: "getneighbor", Params: &json.RawMessage{'{', '}'}, Client: o.http.MainClient, UnmarshalData: &data.Neighbor}
 
 	t2 := time.Now()
 	res, err = o.jrpc_get(neighbor)
@@ -170,18 +170,18 @@ func (o *NKNOVH) apiGetNodeDetails(q *WSQuery, c *CLIENT) (err error, r WSReply)
 	}
 
 	type NodeStats struct {
-		MinPing int
-		AvgPing int
-		MaxPing int
-		NeighborCount int
+		MinPing         int
+		AvgPing         int
+		MaxPing         int
+		NeighborCount   int
 		NeighborPersist int
-		RelaysPerHour uint64
-		NodeState *NodeState
+		RelaysPerHour   uint64
+		NodeState       *NodeState
 	}
 
 	ns := new(NodeStats)
 	if data.State.Result.Uptime > 0 {
-		ns.RelaysPerHour = uint64(math.Floor(float64(data.State.Result.RelayMessageCount)/float64(data.State.Result.Uptime)*3600))
+		ns.RelaysPerHour = uint64(math.Floor(float64(data.State.Result.RelayMessageCount) / float64(data.State.Result.Uptime) * 3600))
 	} else {
 		ns.RelaysPerHour = 0
 	}
@@ -211,7 +211,7 @@ func (o *NKNOVH) apiGetNodeDetails(q *WSQuery, c *CLIENT) (err error, r WSReply)
 				sumpersist++
 			}
 		}
-		ns.AvgPing = int(math.Round(float64(sumping)/float64(ncount)))
+		ns.AvgPing = int(math.Round(float64(sumping) / float64(ncount)))
 		ns.MaxPing = max
 		ns.MinPing = min
 		ns.NeighborCount = ncount
@@ -221,12 +221,12 @@ func (o *NKNOVH) apiGetNodeDetails(q *WSQuery, c *CLIENT) (err error, r WSReply)
 	m["NodeStats"] = ns
 	t0_time := time.Now().Sub(t0)
 	m["DebugInfo"] = map[string]interface{}{
-			"GetnodestateTime": t1_time.String(),
-			"GetneighborTime": t2_time.String(),
-			"HandlingTime": t0_time.String(),
+		"GetnodestateTime": t1_time.String(),
+		"GetneighborTime":  t2_time.String(),
+		"HandlingTime":     t0_time.String(),
 	}
 
-	return nil, WSReply{Method: q.Method, Code: 0, Value: m,}
+	return nil, WSReply{Method: q.Method, Code: 0, Value: m}
 }
 
 func (o *NKNOVH) apiSaveSettings(q *WSQuery, c *CLIENT) (err error, r WSReply) {
@@ -276,7 +276,7 @@ func (o *NKNOVH) apiSaveSettings(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 			//Remove all wallets
 			_, err := tx.Stmt(o.sql.stmt["main"]["WebRmAllWalletsByHash"]).Exec(c.HashId)
 			if err != nil {
-				o.log.Syslog("Cannot execute Tx stmt query: " + err.Error(), "sql")
+				o.log.Error("Cannot execute Tx stmt query:", zap.Error(err))
 				return o.WsError(q, 1)
 			}
 		} else {
@@ -288,9 +288,9 @@ func (o *NKNOVH) apiSaveSettings(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 			}
 			defer rows.Close()
 			var (
-				id int
+				id         int
 				nkn_wallet string
-				balance float64
+				balance    float64
 			)
 			for rows.Next() {
 				if err = rows.Scan(&id, &nkn_wallet, &balance); err != nil {
@@ -312,7 +312,7 @@ func (o *NKNOVH) apiSaveSettings(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 					dont_remove_ids = append(dont_remove_ids, db_wallets_id[x])
 				}
 			}
-	
+
 			y := len(dont_remove_ids)
 			for i, _ := range db_wallets_id {
 				if x := FindIntInSlice(dont_remove_ids, db_wallets_id[i]); x == y {
@@ -325,12 +325,12 @@ func (o *NKNOVH) apiSaveSettings(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	}
 
 	if err = tx.Commit(); err != nil {
-		o.log.Syslog("Cannot Commit Tx Query: " + err.Error(), "sql")
+		o.log.Error("Cannot Commit Tx Query", zap.Error(err))
 		return o.WsError(q, 1)
 	}
 	m := map[string]interface{}{}
 	m["Data"] = "All settings saved"
-	return nil, WSReply{Method: q.Method, Code: 0, Value: m,}
+	return nil, WSReply{Method: q.Method, Code: 0, Value: m}
 }
 
 func (o *NKNOVH) apiRmNodesByIp(q *WSQuery, c *CLIENT) (err error, r WSReply) {
@@ -354,7 +354,7 @@ func (o *NKNOVH) apiRmNodesByIp(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 			if raw_node, ok = raw_nodes[i].(string); !ok {
 				return o.WsError(q, 27)
 			}
-			raw_node  = strings.TrimSpace(raw_node)
+			raw_node = strings.TrimSpace(raw_node)
 			if ok = o.Validator.IsIPv4Valid(raw_node); !ok {
 				return o.WsError(q, 27)
 			}
@@ -376,48 +376,48 @@ func (o *NKNOVH) apiRmNodesByIp(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 
 	tx, err := o.sql.db["main"].Begin()
 	if err != nil {
-		o.log.Syslog("Cannot create new Tx: " + err.Error(), "sql")
+		o.log.Error("Cannot create new Tx", zap.Error(err))
 		return o.WsError(q, 1)
 	}
 	defer tx.Rollback()
 	var row_id uint64
 	rows_id := make([]uint64, 0, len(nodes))
-	for i,_ := range nodes {
+	for i, _ := range nodes {
 		row := o.sql.stmt["main"]["WebGetNodeIdByIp"].QueryRow(c.HashId, nodes[i])
 		err := row.Scan(&row_id)
 		switch {
-			case err == sql.ErrNoRows:
-				return o.WsError(q, 28)
-			case err != nil:
+		case err == sql.ErrNoRows:
+			return o.WsError(q, 28)
+		case err != nil:
+			return o.WsError(q, 1)
+		default:
+			rows_id = append(rows_id, row_id)
+			res, err := tx.Stmt(o.sql.stmt["main"]["WebRmNodes"]).Exec(c.HashId, row_id)
+			if err != nil {
+				o.log.Error("Cannot execute Tx stmt query", zap.Error(err))
 				return o.WsError(q, 1)
-			default:
-				rows_id = append(rows_id, row_id)
-				res, err := tx.Stmt(o.sql.stmt["main"]["WebRmNodes"]).Exec(c.HashId, row_id)
-				if err != nil {
-					o.log.Syslog("Cannot execute Tx stmt query: " + err.Error(), "sql")
-					return o.WsError(q, 1)
-				}
-				if rows_affected, err := res.RowsAffected(); rows_affected == 0 && err == nil {
-					o.log.Syslog("No rows affected by removing node", "sql")
-					return o.WsError(q, 28)
-				} else if err != nil {
-					o.log.Syslog("Cannot get RowsAffected: " + err.Error(), "sql")
-					return o.WsError(q, 1)
-				}
+			}
+			if rows_affected, err := res.RowsAffected(); rows_affected == 0 && err == nil {
+				o.log.Error("No rows affected by removing node")
+				return o.WsError(q, 28)
+			} else if err != nil {
+				o.log.Error("Cannot get RowsAffected", zap.Error(err))
+				return o.WsError(q, 1)
+			}
 		}
 
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		o.log.Syslog("Cannot Commit Tx Query: " + err.Error(), "sql")
+		o.log.Error("Cannot Commit Tx Query", zap.Error(err))
 		return o.WsError(q, 1)
 	}
 
 	m := map[string]interface{}{}
 	m["Data"] = "Nodes removed successfully"
 	m["NodesId"] = rows_id
-	return nil, WSReply{Method: q.Method, Code: 0, Value: m, }
+	return nil, WSReply{Method: q.Method, Code: 0, Value: m}
 }
 
 func (o *NKNOVH) apiRmNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
@@ -458,35 +458,35 @@ func (o *NKNOVH) apiRmNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	}
 	tx, err := o.sql.db["main"].Begin()
 	if err != nil {
-		o.log.Syslog("Cannot create new Tx: " + err.Error(), "sql")
+		o.log.Error("Cannot create new Tx", zap.Error(err))
 		return o.WsError(q, 1)
 	}
 	defer tx.Rollback()
-	for i,_ := range nodes {
+	for i, _ := range nodes {
 		res, err := tx.Stmt(o.sql.stmt["main"]["WebRmNodes"]).Exec(c.HashId, nodes[i])
 		if err != nil {
-			o.log.Syslog("Cannot execute Tx stmt query: " + err.Error(), "sql")
+			o.log.Error("Cannot execute Tx stmt query", zap.Error(err))
 			return o.WsError(q, 1)
 		}
 		if rows_affected, err := res.RowsAffected(); rows_affected == 0 && err == nil {
-			o.log.Syslog("No rows affected by removing node", "sql")
+			o.log.Warn("No rows affected by removing node")
 			return o.WsError(q, 18)
 		} else if err != nil {
-			o.log.Syslog("Cannot get RowsAffected: " + err.Error(), "sql")
+			o.log.Error("No rows affected by removing node", zap.Error(err))
 			return o.WsError(q, 1)
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		o.log.Syslog("Cannot Commit Tx Query: " + err.Error(), "sql")
+		o.log.Error("Cannot Commit Tx Query", zap.Error(err))
 		return o.WsError(q, 1)
 	}
 
 	m := map[string]interface{}{}
 	m["Data"] = "Nodes removed successfully"
 	m["NodesId"] = nodes
-	return nil, WSReply{Method: q.Method, Code: 0, Value: m, }
+	return nil, WSReply{Method: q.Method, Code: 0, Value: m}
 }
 
 func (o *NKNOVH) apiAddNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
@@ -498,9 +498,9 @@ func (o *NKNOVH) apiAddNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	nodes_limit := 5000
 
 	type NodeIps struct {
-		Multi []string
+		Multi   []string
 		MultiIP []net.IP
-		One string
+		One     string
 	}
 
 	var node_name string
@@ -590,12 +590,12 @@ func (o *NKNOVH) apiAddNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 		}
 		if _, ok = IsPrivateIPv4(ip); ok {
 			return o.WsError(q, 11)
-		} 
+		}
 		if err, nodes_count = CountNodesByHash(c.HashId); err != nil {
 			return o.WsError(q, 1)
 		}
 		var x int
-		if x = nodes_count+1; x > nodes_limit {
+		if x = nodes_count + 1; x > nodes_limit {
 			return o.WsError(q, 12)
 		}
 		if node_name == "" {
@@ -603,7 +603,7 @@ func (o *NKNOVH) apiAddNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 		}
 		ips.One = ip.String()
 		if err, status := InsertNode(c.HashId, node_name, ips.One); err != nil {
-			o.log.Syslog("InsertNode returned err:" + err.Error(), "sql")
+			o.log.Error("InsertNode returned err", zap.Error(err))
 			return o.WsError(q, 1)
 		} else {
 			if status == 0 {
@@ -648,7 +648,7 @@ func (o *NKNOVH) apiAddNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	}
 
 	nodeslenadd := len(ips.Multi)
-	if x := nodes_count+nodeslenadd; x > nodes_limit {
+	if x := nodes_count + nodeslenadd; x > nodes_limit {
 		return o.WsError(q, 12)
 	}
 	var prefix string
@@ -667,13 +667,13 @@ func (o *NKNOVH) apiAddNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 		}
 		if _, ok = IsPrivateIPv4(ip); ok {
 			return o.WsError(q, 11)
-		} 
+		}
 		ips.MultiIP = append(ips.MultiIP, ip)
 	}
 
 	tx, err := o.sql.db["main"].Begin()
 	if err != nil {
-		o.log.Syslog("Cannot Begin Tx: " + err.Error(), "sql")
+		o.log.Error("Cannot Begin Tx", zap.Error(err))
 		return o.WsError(q, 1)
 	}
 	defer tx.Rollback()
@@ -681,7 +681,7 @@ func (o *NKNOVH) apiAddNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	var cnt_nodes_added int = 0
 	var mipname bool = len(multiple_ipname) > 0
 	var clearprefix string
-	for i,_ := range ips.MultiIP {
+	for i, _ := range ips.MultiIP {
 		ipstring := ips.MultiIP[i].String()
 		if mipname {
 			clearprefix = multiple_ipname[ipstring]
@@ -689,7 +689,8 @@ func (o *NKNOVH) apiAddNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 			clearprefix = fmt.Sprintf("%s%d", prefix, nodes_count+i)
 		}
 		if err, status := InsertNode(c.HashId, clearprefix, ipstring, tx); err != nil {
-			o.log.Syslog("InsertNode returned err:" + err.Error(), "sql")
+
+			o.log.Error("InsertNode returned err:", zap.Error(err))
 			return o.WsError(q, 1)
 		} else {
 			if status == 0 {
@@ -702,7 +703,7 @@ func (o *NKNOVH) apiAddNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 
 	if partially == true && cnt_nodes_added > 0 {
 		if err = tx.Commit(); err != nil {
-			o.log.Syslog("Cannot commit transaction: " + err.Error(), "sql")
+			o.log.Error("Cannot commit transaction: ", zap.Error(err))
 			return o.WsError(q, 1)
 		}
 		return o.WsError(q, 2)
@@ -710,33 +711,33 @@ func (o *NKNOVH) apiAddNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 		return o.WsError(q, 14)
 	}
 	if err = tx.Commit(); err != nil {
-		o.log.Syslog("Cannot commit transaction: " + err.Error(), "sql")
+		o.log.Error("Cannot commit transaction: ", zap.Error(err))
 		return o.WsError(q, 1)
 	}
 	m := map[string]interface{}{}
 	m["Info"] = "Nodes added"
-	return nil, WSReply{Method: q.Method, Code: 0, Value: m }
+	return nil, WSReply{Method: q.Method, Code: 0, Value: m}
 }
 
 func (o *NKNOVH) apiGenId(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	var cnt int
 	row := o.sql.stmt["main"]["WebCheckIPCreator"].QueryRow(c.Ip)
 	if errx := row.Scan(&cnt); errx != nil {
-		o.log.Syslog("Can't execute row.Scan(): "+errx.Error(), "sql")
+		o.log.Error("Can't execute row.Scan(): ", zap.Error(err))
 		return o.WsError(q, 1)
 	}
 	if cnt >= 3 {
-		o.log.Syslog("Limit exceeded (genId) from IP: " + c.Ip, "info")
+		o.log.Warn("Limit exceeded (genId) from IP: ", zap.String("ip", c.Ip))
 		return o.WsError(q, 252)
 	}
 	errx, hash := GenRandomSHA256()
 	if errx != nil {
-		o.log.Syslog("GenRandomSHA256 returned error: " + err.Error(), "info")
+		o.log.Error("GenRandomSHA256 returned error: ", zap.Error(err))
 		return o.WsError(q, 240)
 	}
 	_, errx = o.sql.stmt["main"]["WebCreateUniq"].Exec(hash, c.Ip)
 	if errx != nil {
-		o.log.Syslog("Cannot exec query: "+errx.Error(), "sql")
+		o.log.Error("Cannot exec query: ", zap.Error(err))
 		return o.WsError(q, 1)
 	}
 	data := map[string]interface{}{}
@@ -748,7 +749,7 @@ func (o *NKNOVH) apiGenId(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 // WebSocket only
 
 func (o *NKNOVH) apiLogout(q *WSQuery, c *CLIENT) (err error, r WSReply) {
-	r = WSReply{Method: q.Method, Code: 0,}
+	r = WSReply{Method: q.Method, Code: 0}
 	if c.NotWs {
 		return
 	}
@@ -772,27 +773,26 @@ func (o *NKNOVH) apiAuth(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	var id int
 	row := o.sql.stmt["main"]["WebSelectUniqByHash"].QueryRow(&hash)
 	errx := row.Scan(&id)
-		switch {
-		case errx == sql.ErrNoRows:
-			return o.WsError(q, 255)
+	switch {
+	case errx == sql.ErrNoRows:
+		return o.WsError(q, 255)
+
+	case errx != nil:
+		o.log.Error("Can't execute row.Scan(): ", zap.Error(err))
+		return o.WsError(q, 1)
 		break
-		case errx != nil:
-			o.log.Syslog("Can't execute row.Scan(): "+errx.Error(), "sql")
-			return o.WsError(q, 1)
-		break
-		}
+	}
 
 	if c.NotWs {
 		c.HashId = id
 	} else {
 		o.WsClientUpdate(c, id)
 	}
-	
+
 	value := map[string]interface{}{}
 	value["Hash"] = hash
-	return err, WSReply{Method: q.Method, Code: 0, Value: value,}
+	return err, WSReply{Method: q.Method, Code: 0, Value: value}
 }
-
 
 func (o *NKNOVH) apiFullstack(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	if c.HashId == -1 {
@@ -836,13 +836,13 @@ func (o *NKNOVH) apiLanguage(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	if len(locale) > 10 || len(view) > 32 {
 		return o.WsError(q, 232)
 	}
-	
+
 	if i := FindStringInSlice(lang_packages, locale); i == len(lang_packages) {
 		return o.WsError(q, 233)
 	}
 	read, err := ioutil.ReadFile("templates/languages/" + locale + ".json")
 	if err != nil {
-		o.log.Syslog("Cannot read a file: " + err.Error(), "main")
+		o.log.Error("Cannot read a file: ", zap.Error(err))
 		return o.WsError(q, 234)
 	}
 
@@ -851,7 +851,7 @@ func (o *NKNOVH) apiLanguage(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	m["Locale"] = locale
 	m["View"] = view
 	m["Data"] = data
-	r = WSReply{Method: q.Method, Code: 0, Value: m, }
+	r = WSReply{Method: q.Method, Code: 0, Value: m}
 	return
 }
 
@@ -859,7 +859,7 @@ func (o *NKNOVH) apiDaemon(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	var norows bool = true
 	rows, errx := o.sql.stmt["main"]["WebGetDaemon"].Query()
 	if errx != nil {
-		o.log.Syslog("Can't execute row.Scan(): "+errx.Error(), "sql")
+		o.log.Error("Can't execute row.Scan(): ", zap.Error(err))
 		return o.WsError(q, 1)
 	}
 	defer rows.Close()
@@ -869,7 +869,7 @@ func (o *NKNOVH) apiDaemon(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	for rows.Next() {
 		norows = false
 		if errx := rows.Scan(&name, &value); errx != nil {
-			o.log.Syslog("Can't execute row.Scan(): "+errx.Error(), "sql")
+			o.log.Error("Can't execute row.Scan(): ", zap.Error(err))
 			return o.WsError(q, 1)
 		}
 		m[name] = value
@@ -877,14 +877,14 @@ func (o *NKNOVH) apiDaemon(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	if norows {
 		return o.WsError(q, 3)
 	}
-	r = WSReply{Method: q.Method, Code: 0, Value: m, }
+	r = WSReply{Method: q.Method, Code: 0, Value: m}
 	return
 }
 
 func (o *NKNOVH) apiMyNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	rows, errx := o.sql.stmt["main"]["WebGetMyNodes"].Query(c.HashId)
 	if errx != nil {
-		o.log.Syslog("Can't execute Query WebGetMyNodes: "+errx.Error(), "sql")
+		o.log.Error("Can't execute Query WebGetMyNodes: ", zap.Error(errx))
 		return o.WsError(q, 1)
 	}
 	defer rows.Close()
@@ -897,30 +897,30 @@ func (o *NKNOVH) apiMyNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	tmp := map[int]map[int]map[string]uint64{}
 
 	type nodeS struct {
-		Id int
+		Id   int
 		Name string
-		Ip string
+		Ip   string
 	}
 	type nodeLastInfo struct {
-		NodeId int
-		NID string
-		Currtimestamp uint64
-		Height uint64
+		NodeId            int
+		NID               string
+		Currtimestamp     uint64
+		Height            uint64
 		ProposalSubmitted int
-		ProtocolVersion int
+		ProtocolVersion   int
 		RelayMessageCount uint64
-		SyncState string
-		Uptime int
-		Version string
-		LatestUpdate string
+		SyncState         string
+		Uptime            int
+		Version           string
+		LatestUpdate      string
 	}
 
-	loop:
+loop:
 	for rows.Next() {
 		norows = false
 		node := new(nodeS)
 		if errx := rows.Scan(&node.Id, &node.Name, &node.Ip); errx != nil {
-			o.log.Syslog("Can't execute row.Scan(): "+errx.Error(), "sql")
+			o.log.Error("Can't execute row.Scan(): ", zap.Error(errx))
 			return o.WsError(q, 1)
 		}
 		n++
@@ -935,27 +935,27 @@ func (o *NKNOVH) apiMyNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 		rows2 := o.sql.stmt["main"]["WebGetMyNodeLastInfo"].QueryRow(node.Id)
 		errx := rows2.Scan(&nli.NodeId, &nli.NID, &nli.Currtimestamp, &nli.Height, &nli.ProposalSubmitted, &nli.ProtocolVersion, &nli.RelayMessageCount, &nli.SyncState, &nli.Uptime, &nli.Version, &nli.LatestUpdate)
 		switch {
-			case errx == sql.ErrNoRows:
-				nodes[n]["Err"] = 2
-				nodes[n]["SyncState"] = "Waiting for first update"
-				nodes[n]["LatestUpdate"] = time.Now().Format("2006-01-02 15:04:05")
-				no_history_nodes[n] = true
-				continue loop
-			case errx != nil:
-				o.log.Syslog("Can't execute Query WebGetMyNodeLastInfo: "+errx.Error(), "sql")
-				return o.WsError(q, 1)
+		case errx == sql.ErrNoRows:
+			nodes[n]["Err"] = 2
+			nodes[n]["SyncState"] = "Waiting for first update"
+			nodes[n]["LatestUpdate"] = time.Now().Format("2006-01-02 15:04:05")
+			no_history_nodes[n] = true
+			continue loop
+		case errx != nil:
+			o.log.Error("Can't execute Query WebGetMyNodeLastInfo: ", zap.Error(err))
+			return o.WsError(q, 1)
 		}
 		nodes[n]["SyncState"] = nli.SyncState
 		nodes[n]["Uptime"] = nli.Uptime
 		nodes[n]["Height"] = nli.Height
 		nodes[n]["Version"] = nli.Version
 		nodes[n]["RelayMessageCount"] = nli.RelayMessageCount
-		nodes[n]["Currtimestamp"] = nli.Currtimestamp		
+		nodes[n]["Currtimestamp"] = nli.Currtimestamp
 		nodes[n]["ProposalSubmitted"] = nli.ProposalSubmitted
 		nodes[n]["LatestUpdate"] = nli.LatestUpdate
 
 		if nli.Uptime > 0 {
-			nodes[n]["RelaysPerHour"] = math.Floor(float64(nli.RelayMessageCount)/float64(nli.Uptime)*3600)
+			nodes[n]["RelaysPerHour"] = math.Floor(float64(nli.RelayMessageCount) / float64(nli.Uptime) * 3600)
 		} else {
 			nodes[n]["RelaysPerHour"] = 0
 		}
@@ -979,7 +979,7 @@ func (o *NKNOVH) apiMyNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 		return o.WsError(q, 3)
 	}
 	var sx string
-	x := n+1
+	x := n + 1
 	inSx := make([]interface{}, x, x)
 	nodesIdKeys := make([]int, 0, x)
 	for key := range nodes_id {
@@ -996,14 +996,14 @@ func (o *NKNOVH) apiMyNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	sqlHistory := "SELECT node_id,Currtimestamp,RelayMessageCount,Uptime FROM nodes_history WHERE node_id in (" + sx + ") ORDER BY id DESC"
 	stmt, errx := o.sql.db["main"].Prepare(sqlHistory)
 	if errx != nil {
-		o.log.Syslog("Can't Prepare sqlHistory: "+errx.Error(), "sql")
+		o.log.Error("Can't Prepare sqlHistory: ", zap.Error(errx))
 		return o.WsError(q, 1)
 	}
 	defer stmt.Close()
 	norows = true
 	rows3, errx := stmt.Query(inSx...)
 	if errx != nil {
-		o.log.Syslog("Can't execute query sqlhistory: "+errx.Error(), "sql")
+		o.log.Error("Can't execute query sqlhistory: ", zap.Error(errx))
 		return o.WsError(q, 1)
 	}
 	defer rows3.Close()
@@ -1011,7 +1011,7 @@ func (o *NKNOVH) apiMyNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 		norows = false
 		h := new(nodeLastInfo)
 		if errx := rows3.Scan(&h.NodeId, &h.Currtimestamp, &h.RelayMessageCount, &h.Uptime); errx != nil {
-			o.log.Syslog("Can't execute row.Scan(): "+errx.Error(), "sql")
+			o.log.Error("Can't execute row.Scan(): ", zap.Error(errx))
 			return o.WsError(q, 1)
 		}
 		n := nodes_id[h.NodeId]
@@ -1030,7 +1030,7 @@ func (o *NKNOVH) apiMyNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	if norows {
 		m := map[string]interface{}{}
 		m["List"] = nodes
-		r = WSReply{Method: q.Method, Code: 0, Value: m,}
+		r = WSReply{Method: q.Method, Code: 0, Value: m}
 		return
 	}
 	setRelays := func(val map[int]map[string]uint64, rh int, diff int, elem int, nodes []map[string]interface{}, key int) {
@@ -1045,22 +1045,22 @@ func (o *NKNOVH) apiMyNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 
 		i := 0
 		max_diff := float64(diff)
-		ipos := i+elem
+		ipos := i + elem
 		if _, ok := val[ipos]; ok {
 			diff_uptime := float64(rh) - (float64(val[i]["Uptime"]) - float64(val[ipos]["Uptime"]))
 			diff_timestamp := float64(rh) - (float64(val[i]["Currtimestamp"]) - float64(val[ipos]["Currtimestamp"]))
 			diff_general := diff_timestamp - diff_uptime
 			if (diff_general >= 0 && diff_general <= 10) != (diff_general < 0 && diff_general >= -10) {
 				if (diff_uptime <= max_diff && diff_uptime >= 0) != (diff_uptime < max_diff && diff_uptime < 0 && (max_diff+diff_uptime) > 0) {
-						if (val[i]["Uptime"] > val[ipos]["Uptime"]) && (val[ipos]["Uptime"] > 0) {
-							nodes[key][rtype] = math.Floor((float64(val[i]["Relays"]) - float64(val[ipos]["Relays"]))/float64(rh)*3600);
-							return
-						} else {
-							nodes[key][rtype] = -1;
-							return
-						}
+					if (val[i]["Uptime"] > val[ipos]["Uptime"]) && (val[ipos]["Uptime"] > 0) {
+						nodes[key][rtype] = math.Floor((float64(val[i]["Relays"]) - float64(val[ipos]["Relays"])) / float64(rh) * 3600)
+						return
+					} else {
+						nodes[key][rtype] = -1
+						return
+					}
 				} else {
-					nodes[key][rtype] = -1;
+					nodes[key][rtype] = -1
 					return
 				}
 			}
@@ -1076,20 +1076,19 @@ func (o *NKNOVH) apiMyNodes(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	for key, _ := range tmp {
 		l := len(opts)
 		for z := 0; z < l; z++ {
-			setRelays(tmp[key], opts[z]["rh"], opts[z]["max_diff"], opts[z]["elem"], nodes, key);
+			setRelays(tmp[key], opts[z]["rh"], opts[z]["max_diff"], opts[z]["elem"], nodes, key)
 		}
 	}
 	m := map[string]interface{}{}
 	m["List"] = nodes
-	r = WSReply{Method: q.Method, Code: 0, Value: m,}
+	r = WSReply{Method: q.Method, Code: 0, Value: m}
 	return
 }
-
 
 func (o *NKNOVH) apiPrices(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	rows, errx := o.sql.stmt["main"]["WebGetPrices"].Query()
 	if errx != nil {
-		o.log.Syslog("Can't execute row.Scan(): "+errx.Error(), "sql")
+		o.log.Error("Can't execute row.Scan(): ", zap.Error(errx))
 		return o.WsError(q, 1)
 	}
 	defer rows.Close()
@@ -1100,7 +1099,7 @@ func (o *NKNOVH) apiPrices(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	for rows.Next() {
 		norows = false
 		if errx := rows.Scan(&name, &price); errx != nil {
-			o.log.Syslog("Can't execute row.Scan(): "+errx.Error(), "sql")
+			o.log.Error("Can't execute row.Scan(): ", zap.Error(errx))
 			return o.WsError(q, 1)
 		}
 		in[name] = price
@@ -1108,7 +1107,7 @@ func (o *NKNOVH) apiPrices(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	if norows {
 		return o.WsError(q, 3)
 	}
-	r = WSReply{Method: q.Method, Code: 0, Value: in, }
+	r = WSReply{Method: q.Method, Code: 0, Value: in}
 	return
 }
 
@@ -1116,23 +1115,23 @@ func (o *NKNOVH) apiNetstatus(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	row := o.sql.stmt["main"]["WebGetNetStatus"].QueryRow()
 	obj := new(Netstatus)
 	errx := row.Scan(&obj.Relays, &obj.AverageUptime, &obj.AverageRelays, &obj.RelaysPerHour, &obj.ProposalSubmitted, &obj.PersistNodesCount, &obj.NodesCount, &obj.LastHeight, &obj.LastTimestamp, &obj.AverageBlockTime, &obj.AverageBlocksPerDay, &obj.LatestUpdate)
-		switch {
-		case errx == sql.ErrNoRows:
-			return o.WsError(q, 3)
+	switch {
+	case errx == sql.ErrNoRows:
+		return o.WsError(q, 3)
 		break
-		case errx != nil:
-			o.log.Syslog("Can't execute row.Scan(): "+errx.Error(), "sql")
-			return o.WsError(q, 1)
+	case errx != nil:
+		o.log.Error("Can't execute row.Scan(): ", zap.Error(errx))
+		return o.WsError(q, 1)
 		break
-		}
-	resp := WSReply{Method: q.Method, Code: 0, Value: obj, }
+	}
+	resp := WSReply{Method: q.Method, Code: 0, Value: obj}
 	return err, resp
 }
 
 func (o *NKNOVH) apiMyWallets(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	rows, errx := o.sql.stmt["main"]["WebGetMyWallets"].Query(c.HashId)
 	if errx != nil {
-		o.log.Syslog("Can't execute row.Scan(): "+errx.Error(), "sql")
+		o.log.Error("Can't execute row.Scan(): ", zap.Error(errx))
 		return o.WsError(q, 1)
 	}
 	defer rows.Close()
@@ -1145,12 +1144,12 @@ func (o *NKNOVH) apiMyWallets(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	for rows.Next() {
 		norows = false
 		if errx := rows.Scan(&id, &wallet, &balance); errx != nil {
-			o.log.Syslog("Can't execute row.Scan(): "+errx.Error(), "sql")
+			o.log.Error("Can't execute row.Scan(): ", zap.Error(errx))
 			return o.WsError(q, 1)
 		}
 		m := map[string]interface{}{}
 		m["Id"] = id
-		m["NknWallet"] = wallet 
+		m["NknWallet"] = wallet
 		m["Balance"] = balance
 		in = append(in, m)
 	}
@@ -1159,6 +1158,6 @@ func (o *NKNOVH) apiMyWallets(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	}
 	mv := map[string]interface{}{}
 	mv["Wallets"] = in
-	r = WSReply{Method: q.Method, Code: 0, Value: mv, }
+	r = WSReply{Method: q.Method, Code: 0, Value: mv}
 	return
 }
