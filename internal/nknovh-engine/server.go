@@ -16,6 +16,7 @@ import (
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/julienschmidt/httprouter"
+	"go.uber.org/zap"
 )
 
 type WebHelper struct {
@@ -172,7 +173,7 @@ func (o *NKNOVH) InternalErrorJson(w http.ResponseWriter, errx error) {
 	w.WriteHeader(500)
 	res := o.Web.Response[500]
 	if errx != nil {
-		o.log.Syslog("Internal server error: "+errx.Error(), "http")
+		o.log.Error("Internal server error: ", zap.Error(errx))
 	}
 	if b, err := json.Marshal(res); err == nil {
 		w.Write(b)
@@ -198,7 +199,7 @@ func (o *NKNOVH) WsClientCreate(conn net.Conn) *CLIENT {
 		v.mu.Unlock()
 	}
 	t_x := time.Now().Sub(t).String()
-	o.log.Syslog("WsClientCreate time: "+t_x, "debug")
+	o.log.Debug("WsClientCreate time: " + t_x)
 
 	//ONLY FOR DEBUG MODE
 	cnt := 0
@@ -209,7 +210,7 @@ func (o *NKNOVH) WsClientCreate(conn net.Conn) *CLIENT {
 		o.Web.WsPool.Clients[i].mu.RUnlock()
 	}
 	o.Web.WsPool.mu.RUnlock()
-	o.log.Syslog("Active ws connections: "+strconv.Itoa(cnt), "debug")
+	o.log.Debug("Active ws connections: " + strconv.Itoa(cnt))
 	return c
 }
 
@@ -221,7 +222,7 @@ func (o *NKNOVH) WsClientClose(c *CLIENT) {
 	o.WsMultiConnectDecrease(c.Ip)
 	o.WsClientGC(c)
 	t_x := time.Now().Sub(t).String()
-	o.log.Syslog("WsClientClose time: "+t_x, "debug")
+	o.log.Debug("WsClientClose time: " + t_x)
 	return
 }
 
@@ -246,7 +247,7 @@ func (o *NKNOVH) WsClientUpdate(c *CLIENT, hashId int) {
 		for x, _ := range o.Web.WsPool.Clients {
 			for i, _ := range o.Web.WsPool.Clients[x].list {
 				s := fmt.Sprintf("HashId: %v >> Context: %v", x, o.Web.WsPool.Clients[x].list[i])
-				o.log.Syslog(s, "debug")
+				o.log.Debug(s)
 			}
 		}
 	}
@@ -266,7 +267,7 @@ func (o *NKNOVH) WsClientUpdate(c *CLIENT, hashId int) {
 		v.mu.Unlock()
 	}
 	t_x := time.Now().Sub(t).String()
-	o.log.Syslog("WsClientUpdate time: "+t_x, "debug")
+	o.log.Debug("WsClientUpdate time: " + t_x)
 
 	return
 }
@@ -282,7 +283,7 @@ func (o *NKNOVH) WsRestrictMultiConnect(ip string) (error, WSReply) {
 	} else {
 		o.Web.WsPool.ActiveIps[ip] = o.Web.WsPool.ActiveIps[ip] + 1
 		if o.Web.WsPool.ActiveIps[ip] > limit {
-			o.log.Syslog("Connections limit is reached from IP "+ip, "debug")
+			o.log.Debug("Connections limit is reached from IP " + ip)
 			q := new(WSQuery)
 			q.Method = "other"
 			_, wsreply := o.WsError(q, 1002)
@@ -311,7 +312,7 @@ func (o *NKNOVH) WsMultiConnectDecrease(ip string) {
 func (o *NKNOVH) WsPolling(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	conn, _, _, err := ws.UpgradeHTTP(r, w)
 	if err != nil {
-		o.log.Syslog("bad \"Upgrade\" header", "wshttp")
+		o.log.Warn("bad \"Upgrade\" header")
 		return
 	}
 	conn.SetReadDeadline(time.Now().Add(time.Second * 30))
@@ -321,7 +322,7 @@ func (o *NKNOVH) WsPolling(w http.ResponseWriter, r *http.Request, _ httprouter.
 		defer o.WsClientClose(c)
 		ip, err := o.getIp(o.conf.TrustedProxies, r)
 		if err != nil {
-			o.log.Syslog("getIp returned an error: "+err.Error(), "wshttp")
+			o.log.Warn("getIp returned an error: " + err.Error())
 			return
 		}
 		c.Ip = ip
@@ -340,7 +341,7 @@ func (o *NKNOVH) WsPolling(w http.ResponseWriter, r *http.Request, _ httprouter.
 					}
 					continue
 				}
-				o.log.Syslog(err.Error(), "wshttp")
+				o.log.Warn(err.Error())
 				return
 			}
 			conn.SetWriteDeadline(time.Now().Add(time.Second * 30))
@@ -356,11 +357,11 @@ func (o *NKNOVH) WsPolling(w http.ResponseWriter, r *http.Request, _ httprouter.
 				conn.SetReadDeadline(time.Now().Add(time.Second * 30))
 				continue
 			}
-			o.log.Syslog("WS Request from "+c.Ip+"; Message: "+string(msg), "wshttp")
+			o.log.Debug("WS Request from " + c.Ip + "; Message: " + string(msg))
 
 			q := new(WSQuery)
 			if err := json.Unmarshal(msg, q); err != nil {
-				o.log.Syslog("Cannot unmarshal json to WSQuery: "+err.Error(), "errors")
+				o.log.Warn("Cannot unmarshal json to WSQuery: " + err.Error())
 				return
 			}
 			if _, ok := o.Web.Methods[q.Method]; !ok {
@@ -432,11 +433,11 @@ func (o *NKNOVH) apiPOST(w http.ResponseWriter, r *http.Request, params httprout
 	ip, err := o.getIp(o.conf.TrustedProxies, r)
 	if err != nil {
 		o.InternalErrorJson(w, err)
-		o.log.Syslog("getIp returned an error: "+err.Error(), "http")
+		o.log.Warn("getIp returned an error: " + err.Error())
 		return
 	}
 	c := &CLIENT{HashId: -1, Ip: ip, NotWs: true}
-	o.log.Syslog("POST Request from "+c.Ip, "http")
+	o.log.Debug("POST Request from " + c.Ip)
 
 	var hash string
 	var ok bool
@@ -599,7 +600,7 @@ func (o *NKNOVH) Listen() {
 	router.NotFound = http.FileServer(http.Dir("./web/"))
 
 	s := &http.Server{
-		Addr:           ":" + strconv.Itoa(o.conf.HttpServer.Port),
+		Addr:           ":" + o.conf.Port,
 		Handler:        router,
 		ReadTimeout:    30 * time.Second,
 		WriteTimeout:   30 * time.Second,

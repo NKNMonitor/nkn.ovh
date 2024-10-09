@@ -2,9 +2,11 @@ package nknovh_engine
 
 import (
 	"io/ioutil"
-	"strconv"
 	"os"
+	"strconv"
+
 	nkn "github.com/nknorg/nkn-sdk-go"
+	"go.uber.org/zap"
 )
 
 type Nknsdk struct {
@@ -91,7 +93,7 @@ func (o *NKNOVH) walletPoll() error {
 func (o *NKNOVH) fetchBalances() error {
 
 	var (
-		id uint
+		id         uint
 		nkn_wallet string
 		db_balance float64
 	)
@@ -99,7 +101,7 @@ func (o *NKNOVH) fetchBalances() error {
 
 	//fetch wallets from the database
 	rows, err := o.sql.stmt["main"]["selectWallets"].Query()
-	if err != nil { 
+	if err != nil {
 		return err
 	}
 	defer rows.Close()
@@ -110,17 +112,17 @@ func (o *NKNOVH) fetchBalances() error {
 		}
 		balance, err := wallet.BalanceByAddress(nkn_wallet)
 		if err != nil {
-			o.log.Syslog("Query balance fail: " + err.Error(), "wallets")
+			o.log.Error("Query balance fail: ", zap.Error(err))
 			continue
 		}
-		float_balance, err := strconv.ParseFloat(balance.String(), 64);
+		float_balance, err := strconv.ParseFloat(balance.String(), 64)
 		if err != nil {
-			o.log.Syslog("Cannot transform string to float64: " + err.Error(), "wallets")
+			o.log.Error("Cannot transform string to float64: ", zap.Error(err))
 			continue
 		}
 		if float_balance != db_balance {
 			if _, err1 := o.sql.stmt["main"]["updateWalletBalanceById"].Exec(&float_balance, &id); err1 != nil {
-				o.log.Syslog("Stmt updateWalletBalanceById has returned an error: ("+err1.Error()+")", "sql")
+				o.log.Error("Stmt updateWalletBalanceById has returned an error: (", zap.Error(err))
 				continue
 			}
 		}

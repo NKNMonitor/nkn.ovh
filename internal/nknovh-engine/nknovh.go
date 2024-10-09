@@ -96,13 +96,9 @@ func (o *NKNOVH) Build() error {
 	o.sql = &Mysql{log: o.log}
 	o.sql.build()
 	o.conf = conf
-	var conslen int = len(o.conf.Db)
 
-	//Creating connections mysql/pgsql
-	for i := 0; i < conslen; i++ {
-		if err := o.sql.createConnect(o.conf.Db[i].Host, o.conf.Db[i].DbType, o.conf.Db[i].Login, o.conf.Db[i].Password, o.conf.Db[i].Database, o.conf.Db[i].MaxOpenConns, o.conf.Db[i].MaxIdleConns, o.conf.Db[i].InsideName); err != nil {
-			return err
-		}
+	if err := o.sql.createConnect(conf.Db, conf.DbType, "main"); err != nil {
+		return err
 	}
 
 	//Prepare mysql queries

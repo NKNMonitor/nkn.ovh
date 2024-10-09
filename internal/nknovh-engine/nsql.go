@@ -2,8 +2,6 @@ package nknovh_engine
 
 import (
 	"database/sql"
-	"fmt"
-	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 	"go.uber.org/zap"
@@ -97,20 +95,9 @@ func (o *Mysql) prepare() error {
 	return nil
 }
 
-func (o *Mysql) createConnect(host string, dbtype string, login string, password string, database string, moc int, mic int, inside string) error {
-	var sqlinfo string
-	var contype string
-	if dbtype == "mysql" {
-		if strings.Contains(host, "/") {
-			contype = "unix"
-		} else {
-			contype = "tcp"
-		}
-		sqlinfo = fmt.Sprintf("%s:%s@%s(%s)/%s", login, password, contype, host, database)
-	} else if dbtype == "postgres" {
-		sqlinfo = fmt.Sprintf("host=%s user=%s password=%s sslmode=disable", host, login, password)
-	}
-	db, err := sql.Open(dbtype, sqlinfo)
+func (o *Mysql) createConnect(connString, dbType, inside string) error {
+
+	db, err := sql.Open(dbType, connString)
 	if err != nil {
 		o.log.Error("Cannot create connect to database: ", zap.Error(err))
 		return err
@@ -120,9 +107,7 @@ func (o *Mysql) createConnect(host string, dbtype string, login string, password
 		o.log.Error("Cannot create connect to database: ", zap.Error(err))
 		return err
 	}
-	o.log.Debug("[" + inside + "] Connection to DB \"" + database + "\" has successfully created")
 	o.db[inside] = db
-	db.SetMaxOpenConns(moc)
-	db.SetMaxIdleConns(mic)
+
 	return nil
 }
