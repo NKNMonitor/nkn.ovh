@@ -413,13 +413,13 @@ func (o *NKNOVH) CreateIndex(w http.ResponseWriter, r *http.Request, _ httproute
 		t.Complete()
 	}
 	t.Flush()
-	if err, x := getEtag("web/static/css/nknc.css"); err == nil {
+	if err, x := getEtag(fmt.Sprintf("%s/static/css/nknc.css", o.WebPath)); err == nil {
 		t.Set("style_etag", strconv.FormatInt(x, 10))
 	}
-	if err, x := getEtag("web/static/js/wasm_exec.js"); err == nil {
+	if err, x := getEtag(fmt.Sprintf("%s/static/js/wasm_exec.js", o.WebPath)); err == nil {
 		t.Set("wexec_etag", strconv.FormatInt(x, 10))
 	}
-	if err, x := getEtag("web/static/lib.wasm"); err == nil {
+	if err, x := getEtag(fmt.Sprintf("%s/static/lib.wasm", o.WebPath)); err == nil {
 		t.Set("wasm_etag", strconv.FormatInt(x, 10))
 	}
 	w.Write(t.View())
@@ -578,7 +578,7 @@ func (o *NKNOVH) WriteJsonWs(data *WSReply, c *CLIENT) error {
 }
 
 func (o *NKNOVH) Listen() {
-	x := templater.NewTemplater("templates")
+	x := templater.NewTemplater(o.TemplatePath)
 	wh := &WebHelper{temp: x}
 	o.Web = &Web{Response: map[int]WSReply{}, Helper: wh}
 	o.Web.WsPool = new(WsPool)
@@ -597,7 +597,7 @@ func (o *NKNOVH) Listen() {
 	router.POST("/api/:method", o.apiPOST)
 	router.POST("/api", o.apiPOST)
 
-	router.NotFound = http.FileServer(http.Dir("./web/"))
+	router.NotFound = http.FileServer(http.Dir(o.WebPath))
 
 	s := &http.Server{
 		Addr:           ":" + o.conf.Port,

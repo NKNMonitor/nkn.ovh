@@ -1,6 +1,7 @@
 package nknovh_engine
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -14,8 +15,8 @@ type Nknsdk struct {
 }
 
 func (o *NKNOVH) walletCreate() error {
-	if _, err := os.Stat("external/wallet.json"); err == nil {
-		if _, err := os.Stat("external/wallet.pswd"); err == nil {
+	if _, err := os.Stat(fmt.Sprintf("%s/wallet.json", o.WalletPath)); err == nil {
+		if _, err := os.Stat(fmt.Sprintf("%s/wallet.pswd", o.WalletPath)); err == nil {
 			return nil
 		}
 	}
@@ -36,12 +37,12 @@ func (o *NKNOVH) walletCreate() error {
 		return err
 	}
 
-	wFile, err := os.OpenFile("external/wallet.json", os.O_WRONLY|os.O_CREATE, 0600)
+	wFile, err := os.OpenFile(fmt.Sprintf("%s/wallet.json", o.WalletPath), os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
 	defer wFile.Close()
-	pFile, err := os.OpenFile("external/wallet.pswd", os.O_WRONLY|os.O_CREATE, 0600)
+	pFile, err := os.OpenFile(fmt.Sprintf("%s/wallet.pswd", o.WalletPath), os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
@@ -58,11 +59,11 @@ func (o *NKNOVH) walletCreate() error {
 }
 
 func (o *NKNOVH) nknConnect() error {
-	data, err := ioutil.ReadFile("external/wallet.json")
+	data, err := ioutil.ReadFile(fmt.Sprintf("%s/wallet.json", o.WalletPath))
 	if err != nil {
 		return err
 	}
-	wpswd, err := ioutil.ReadFile("external/wallet.pswd")
+	wpswd, err := ioutil.ReadFile(fmt.Sprintf("%s/wallet.pswd", o.WalletPath))
 	if err != nil {
 		return err
 	}

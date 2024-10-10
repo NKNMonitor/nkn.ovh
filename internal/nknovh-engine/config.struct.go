@@ -1,12 +1,15 @@
 package nknovh_engine
 
 type configuration struct {
-	Version      string
-	Db           string `env:"DB_CONNECTION_STRING"`
-	LogLevel     string `env:"LOG_LEVEL"`
-	Port         string `env:"PORT"`
-	DbType       string `env:"DB_TYPE"`
-	NeighborPoll struct {
+	Version       string
+	Db            string `env:"DB_CONNECTION_STRING"`
+	LogLevel      string `env:"LOG_LEVEL"`
+	Port          string `env:"PORT"`
+	DbType        string `env:"DB_TYPE"`
+	WalletPath    string `env:"WALLET_PATH"`
+	WebPath       string `env:"WEB_PATH"`
+	TemplatesPath string `env:"TEMPLATE_PATH"`
+	NeighborPoll  struct {
 		ConnTimeout    int `json:"ConnTimeout"`
 		Interval       int `json:"Interval"`
 		RemoveInterval int `json:"RemoveInterval"`

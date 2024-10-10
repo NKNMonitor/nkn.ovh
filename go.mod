@@ -29,6 +29,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/itchyny/base58-go v0.2.2 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/nknorg/ncp-go v1.0.6 // indirect
 	github.com/nknorg/nkn-sdk-go v1.4.8 // indirect
@@ -55,6 +56,8 @@ require (
 	github.com/pion/webrtc/v4 v4.0.0-beta.34 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
+	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.28.0 // indirect
 	golang.org/x/mobile v0.0.0-20241004191011-08a83c5af9f8 // indirect
 	golang.org/x/net v0.30.0 // indirect

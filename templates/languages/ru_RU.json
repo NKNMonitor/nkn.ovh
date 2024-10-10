@@ -27,7 +27,8 @@
 		"road":"Roadmap",
 		"changelog":"Список изменений",
 		"settings":"Настройки",
-		"logout":"Выход"
+		"logout":"Выход",
+		"servercreate":"Создать Сервер"
 	},
 	"donate":{
 		"title":"Пожертвовать"
@@ -98,7 +99,7 @@
 			"title": "Проверка узла онлайн"
 		},
 		"addNodes":{
-			"title":"Добавить узлы",
+			"title":"Создания сервера",
 			"label_single":"Один",
 			"label_multiple":"Несколько",
 			"label_nodeIP":"IP адрес",
@@ -110,6 +111,18 @@
 			"label_multi_prompt":"IP должны быть разделены либо запятыми, либо пробелами, либо переносами строк, но только одним из указанных способов",
 			"label_multi_nodeName":"Префикс узлов (имя)",
 			"add_btn":"Добавить"
+		},
+		"addServer":{
+			"title":"Добавить узлы",
+			"label_ip":"IP адрес",
+			"placeholder_ip":"Только IPv4 адрес",
+			"label_wait_time":"Время ожидания",
+			"placeholder_wait_time":"Только цифрами в часах",
+			"label_usename":"Имя пользователя",
+			"label_password":"Пароль",
+			"label_ssh_key":"Ключ SSH",
+			"label_create":"Создать",
+			"label_use_proxy":"Использовать прокси"
 		},
 		"reference":{
 			"title":"Справка"

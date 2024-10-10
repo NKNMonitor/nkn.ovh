@@ -27,8 +27,11 @@
 	"road": "Roadmap",
 	"changelog": "Changelog",
 	"settings": "Settings",
-	"logout": "Logout"
+	"logout": "Logout",
+	"servercreate":"Create Server"
+
   },
+  
   "donate": {
 	"title": "Donate"
   },
@@ -96,6 +99,19 @@
 		},
 		"nodeLookup": {
 			"title": "Online node checker"
+		},
+		"addServer":{
+			"title":"Add Server",
+			"label_ip":"IP Address",
+			"placeholder_ip":" IPv4 Address only",
+			"label_wait_time":"Wait time",
+			"placeholder_wait_time":"Digits in hours",
+			"label_usename":"User Name",
+			"label_password":"Password",
+			"label_ssh_key":" SSH Key",
+			"label_create":"Create",
+			"label_use_proxy":"Use Proxy"
+
 		},
 		"addNodes": {
 		  "title": "Add nodes",

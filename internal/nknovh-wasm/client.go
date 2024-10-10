@@ -1225,6 +1225,29 @@ func (c *CLIENT) ReloadTableSettings() {
 	return
 }
 
+func (c *CLIENT) CreateServer() {
+	doc := js.Global().Get("document")
+	button := doc.Call("getElementById", "createServerButton")
+	button.Set("disabled", true)
+	data := map[string]interface{}{}
+
+	data["Ip"] = doc.Call("getElementById", "createServerIP").Get("value").String()
+	data["Time"] = doc.Call("getElementById", "createServerWaitTime").Get("value").String()
+	data["Username"] = doc.Call("getElementById", "createServerUsername").Get("value").String()
+	data["Password"] = doc.Call("getElementById", "createServerPassword").Get("value").String()
+	createServerKeySsh := doc.Call("getElementById", "createServerKeySsh").Get("value").String()
+
+	if createServerKeySsh != "" {
+		data["Key"] = createServerKeySsh
+	} else {
+		data["Key"] = ""
+	}
+
+	c.ShowHideModal("createServer", "hide")
+	c.WsSend("createserver", data)
+	return
+}
+
 func (c *CLIENT) ShowHideModal(id string, event string) {
 	doc := js.Global().Get("document")
 	id_mod := id + "Modal"
@@ -1233,23 +1256,22 @@ func (c *CLIENT) ShowHideModal(id string, event string) {
 		fmt.Println("Modal is undefined")
 		return
 	}
-	if _, ok := c.Objects.Listeners["Modal"]; !ok {
-		listener := js.FuncOf(func(_ js.Value, event []js.Value) interface{} {
-			target_id := event[0].Get("target").Get("id")
-			if target_id.String() == id_mod {
-				c.ShowHideModal(id, "hide")
-			}
-			return nil
-		})
-		c.Objects.Listeners["Modal"] = &listener
-	}
+	listener := js.FuncOf(func(_ js.Value, event []js.Value) interface{} {
+		target_id := event[0].Get("target").Get("id")
+		if target_id.String() == id_mod {
+			c.ShowHideModal(id, "hide")
+		}
+		return nil
+	})
+
 	if event == "show" {
-		doc.Get("body").Call("addEventListener", "click", c.Objects.Listeners["Modal"])
+
+		doc.Get("body").Call("addEventListener", "click", listener)
+
 		modal.Get("style").Set("display", "block")
 	}
 	if event == "hide" {
-		doc.Get("body").Call("removeEventListener", "click", c.Objects.Listeners["Modal"])
-		delete(c.Objects.Listeners, "Modal")
+		doc.Get("body").Call("removeEventListener", "click", listener)
 		modal.Get("style").Set("display", "none")
 	}
 	return

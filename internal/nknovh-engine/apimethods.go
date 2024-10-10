@@ -840,7 +840,7 @@ func (o *NKNOVH) apiLanguage(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	if i := FindStringInSlice(lang_packages, locale); i == len(lang_packages) {
 		return o.WsError(q, 233)
 	}
-	read, err := ioutil.ReadFile("templates/languages/" + locale + ".json")
+	read, err := ioutil.ReadFile(fmt.Sprintf("%s/languages/%s.json", o.TemplatePath, locale))
 	if err != nil {
 		o.log.Error("Cannot read a file: ", zap.Error(err))
 		return o.WsError(q, 234)

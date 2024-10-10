@@ -175,6 +175,7 @@
 {{{include "pages/modal/settings.tpl"}}}|m
 {{{include "pages/modal/donate.tpl"}}}|m
 {{{include "pages/modal/disconnect.tpl"}}}|m
+{{{include "pages/modal/createserver.tpl"}}}|m
 `
 
 var nodelookup_view  = `<div class="lookup_neighbor_main"><div style="float: left; margin-right: 10px;">

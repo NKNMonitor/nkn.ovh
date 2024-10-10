@@ -19,16 +19,19 @@ import (
 )
 
 type NKNOVH struct {
-	conf      *configuration
-	log       *zap.Logger
-	sql       *Mysql
-	NodeInfo  *NodeInfo
-	threads   *Threads
-	http      *Http
-	Nknsdk    *Nknsdk
-	Web       *Web
-	Reporter  *Reporter
-	Validator *Validator
+	conf         *configuration
+	log          *zap.Logger
+	sql          *Mysql
+	NodeInfo     *NodeInfo
+	threads      *Threads
+	http         *Http
+	Nknsdk       *Nknsdk
+	Web          *Web
+	Reporter     *Reporter
+	Validator    *Validator
+	WalletPath   string
+	WebPath      string
+	TemplatePath string
 }
 
 type Http struct {
@@ -90,12 +93,16 @@ func (o *NKNOVH) Build() error {
 	var config *configuration
 	conf, err := config.configure()
 	if err != nil {
-		o.log.Error("Failed to configure", zap.Error(err))
 		return err
 	}
+	log := GetLogger(conf.LogLevel)
+	o.log = log
 	o.sql = &Mysql{log: o.log}
 	o.sql.build()
 	o.conf = conf
+	o.WalletPath = conf.WalletPath
+	o.WebPath = conf.WebPath
+	o.TemplatePath = conf.TemplatesPath
 
 	if err := o.sql.createConnect(conf.Db, conf.DbType, "main"); err != nil {
 		return err

@@ -14,4 +14,6 @@ func main() {
 	c.Init()
 	c.Run()
 	<-make(chan bool)
+	fmt.Println("Go Wasm Exited")
+
 }
