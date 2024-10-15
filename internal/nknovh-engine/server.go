@@ -85,9 +85,9 @@ type CLIENT struct {
 
 func (o *NKNOVH) RegisterMethods() {
 	o.Web.Methods = map[string]func(*WSQuery, *CLIENT) (error, WSReply){}
-	o.Web.MethodsReqAuth = []string{"getfullstack", "addnodes", "rmnodes", "rmnodesbyip", "getmynodes", "getnetstatus", "getmywallets", "getprices", "getnodedetails", "savemysettings", "logout"}
+	o.Web.MethodsReqAuth = []string{"getfullstack", "addnodes", "rmnodes", "rmnodesbyip", "getmynodes", "getnetstatus", "getmywallets", "getprices", "getnodedetails", "savemysettings", "logout", "createserver"}
 	o.Web.MethodsReadOnly = []string{"getfullstack", "getmynodes", "getnetstatus", "getmywallets", "getprices", "getnodedetails"}
-	o.Web.MethodsToAll = []string{"addnodes", "rmnodes", "rmnodesbyip", "savemysettings"}
+	o.Web.MethodsToAll = []string{"addnodes", "rmnodes", "rmnodesbyip", "savemysettings", "createserver"}
 	o.Web.Methods["auth"] = o.apiAuth
 	o.Web.Methods["logout"] = o.apiLogout
 	o.Web.Methods["genid"] = o.apiGenId
@@ -104,6 +104,8 @@ func (o *NKNOVH) RegisterMethods() {
 	o.Web.Methods["savemysettings"] = o.apiSaveSettings
 	o.Web.Methods["getnodedetails"] = o.apiGetNodeDetails
 	o.Web.Methods["getnodeipbypublickey"] = o.apiGetNodeIpByPublicKey
+	o.Web.Methods["createserver"] = o.apiCreateServer
+
 	return
 }
 

@@ -87,6 +87,14 @@ func (c *CLIENT) SetLanguage(view string, locale string) {
 	}
 }
 
+func (c *CLIENT) WsCreateServer(datanodes map[string]interface{}) {
+	data := new(WSQuery)
+	data.Method = "createserver"
+	data.Value = datanodes
+	b, _ := json.Marshal(data)
+	c.ws.Call("send", string(b))
+}
+
 func (c *CLIENT) WsOnClose() {
 	check := make(chan int)
 	ch := make(chan int)

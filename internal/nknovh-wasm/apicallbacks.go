@@ -429,3 +429,30 @@ func (c *CLIENT) apiDaemon(data *WSReply) interface{} {
 	}
 	return nil
 }
+
+func (c *CLIENT) apiCreateServer(data *WSReply) interface{} {
+	doc := js.Global().Get("document")
+	button := doc.Call("getElementById", "createServerButton")
+	doc.Call("getElementById", "createServerIP").Set("value", "")
+	doc.Call("getElementById", "createServerWaitTime").Set("value", "1800")
+	doc.Call("getElementById", "createServerUsername").Set("value", "root")
+	doc.Call("getElementById", "createServerPassword").Set("value", "1Htaht;bhfnjh")
+	doc.Call("getElementById", "createServerKeySsh").Set("value", "")
+	button.Set("disabled", false)
+	if data.Error {
+		js.Global().Call("alert", fmt.Sprintf("ERROR: %s", data.ErrMessage))
+
+	} else {
+
+		switch data.Code {
+		case 1:
+			js.Global().Call("alert", fmt.Sprintf("Нода с таким IP уже существует"))
+		case 2:
+			js.Global().Call("alert", fmt.Sprintf("Неверный формат Wait Time"))
+		case 0:
+			js.Global().Call("alert", "Сервер успешно добавлен в очередь обработки")
+		}
+	}
+
+	return nil
+}

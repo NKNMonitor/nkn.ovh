@@ -128,6 +128,16 @@ CREATE TABLE `watchers` (
   `hide_ip` tinyint(1) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+CREATE TABLE `wait_nodes` (
+  `id` int(10) NOT NULL,
+  `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ip` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ssh_key` text COLLATE utf8mb4_unicode_ci,
+  `user` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `done` tinyint(1) NOT NULL,
+  `wait` int(10) NOT NULL,
+  `use_proxy` tinyint(1) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 ALTER TABLE `all_nodes`
   ADD PRIMARY KEY (`id`),
@@ -237,3 +247,5 @@ ALTER TABLE `watchers`
   ADD CONSTRAINT `watchers_ibfk_1` FOREIGN KEY (`hash_id`) REFERENCES `uniq` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION;
 
 
+ALTER TABLE `wait_nodes`
+MODIFY COLUMN `id` INT(10) NOT NULL AUTO_INCREMENT PRIMARY KEY;

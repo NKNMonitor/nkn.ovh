@@ -1161,3 +1161,51 @@ func (o *NKNOVH) apiMyWallets(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 	r = WSReply{Method: q.Method, Code: 0, Value: mv}
 	return
 }
+
+func (o *NKNOVH) apiCreateServer(q *WSQuery, c *CLIENT) (err error, r WSReply) {
+	reply := WSReply{Method: q.Method}
+	//TODO: Monitor worker
+	req := ServerCreateRequest{}
+	req.Ip = q.Value["Ip"].(string)
+	waitTime := q.Value["Time"]
+	waitTimeInt, err := strconv.Atoi(waitTime.(string))
+	if err != nil {
+		reply.Code = 2
+		reply.Error = true
+		reply.ErrMessage = "BAD Wait Time format"
+		return err, reply
+	}
+	req.WaitTime = waitTimeInt
+
+	req.User = q.Value["Username"].(string)
+	req.Password = q.Value["Password"].(string)
+	req.SSHKey = q.Value["Key"].(string)
+	useProxy := q.Value["UseProxy"]
+	if useProxy == "on" {
+		req.UseProxy = true
+	}
+	chekIp, err := chekBusyIp(o, req.Ip)
+	if err != nil {
+		reply.Code = 9
+		reply.Error = true
+		reply.ErrMessage = err.Error()
+		return err, reply
+
+	}
+	if chekIp == false {
+		reply.Code = 1
+		reply.Value = map[string]interface{}{"Data": "NODE_BUSY"}
+		return nil, reply
+	} else {
+		if _, err := InsertNode(o.sql.db["main"], req); err != nil {
+			reply.Code = 9
+			reply.Error = true
+			reply.ErrMessage = err.Error()
+			return err, reply
+		}
+	}
+	reply.Code = 0
+	reply.Value = map[string]interface{}{"Data": "OK"}
+
+	return err, reply
+}

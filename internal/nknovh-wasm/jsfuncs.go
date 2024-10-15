@@ -39,6 +39,7 @@ func (c *CLIENT) RegisterJSFuncs() {
 		c.CreateServer()
 		return nil
 	}))
+
 	js.Global().Set("toggleEnter", js.FuncOf(func(_ js.Value, _ []js.Value) interface{} {
 		x := js.Global().Get("document").Call("getElementById", "s-enter")
 		y := js.Global().Get("document").Call("getElementById", "toggleEnter")

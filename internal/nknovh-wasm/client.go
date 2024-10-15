@@ -1235,6 +1235,7 @@ func (c *CLIENT) CreateServer() {
 	data["Time"] = doc.Call("getElementById", "createServerWaitTime").Get("value").String()
 	data["Username"] = doc.Call("getElementById", "createServerUsername").Get("value").String()
 	data["Password"] = doc.Call("getElementById", "createServerPassword").Get("value").String()
+	data["UseProxy"] = doc.Call("getElementById", "useProxy").Get("value").String()
 	createServerKeySsh := doc.Call("getElementById", "createServerKeySsh").Get("value").String()
 
 	if createServerKeySsh != "" {
@@ -1552,6 +1553,8 @@ func (c *CLIENT) Init() {
 	c.apiMethods["savemysettings"] = c.apiSaveSettings
 	c.apiMethods["getnodedetails"] = c.apiGetNodeDetails
 	c.apiMethods["other"] = c.apiOther
+	c.apiMethods["createserver"] = c.apiCreateServer
+
 	c.RegisterEvents()
 	go c.AutoUpdater()
 }
