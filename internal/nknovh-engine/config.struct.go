@@ -9,7 +9,9 @@ type configuration struct {
 	WalletPath    string `env:"WALLET_PATH"`
 	WebPath       string `env:"WEB_PATH"`
 	TemplatesPath string `env:"TEMPLATE_PATH"`
-	NeighborPoll  struct {
+	NodesPath     string `env:"NODES_PATH"`
+
+	NeighborPoll struct {
 		ConnTimeout    int `json:"ConnTimeout"`
 		Interval       int `json:"Interval"`
 		RemoveInterval int `json:"RemoveInterval"`

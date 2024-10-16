@@ -450,7 +450,7 @@ func (c *CLIENT) apiCreateServer(data *WSReply) interface{} {
 		case 2:
 			js.Global().Call("alert", fmt.Sprintf("Неверный формат Wait Time"))
 		case 0:
-			js.Global().Call("alert", "Сервер успешно добавлен в очередь обработки")
+			js.Global().Call("alert", fmt.Sprintf("Сервер успешно добавлен в очередь обработки. Папка %v", data.Value["Data"]))
 		}
 	}
 

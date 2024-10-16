@@ -9,6 +9,7 @@ import (
 	"math"
 	"net"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1197,6 +1198,44 @@ func (o *NKNOVH) apiCreateServer(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 		reply.Value = map[string]interface{}{"Data": "NODE_BUSY"}
 		return nil, reply
 	} else {
+		bisyNames, err := getBusyDirectoryNames(o)
+		if err != nil {
+			reply.Code = 9
+			reply.Error = true
+			reply.ErrMessage = err.Error()
+			return err, reply
+		}
+		dirs, err := getDirectories(o.NodesPath)
+		if err != nil {
+			reply.Code = 9
+			reply.Error = true
+			reply.ErrMessage = err.Error()
+			return err, reply
+		}
+
+		freeDirs := make([]int, 0)
+		for _, d := range dirs {
+			var isBusy bool
+			for _, i := range bisyNames {
+				if d == i {
+					isBusy = true
+					break
+				}
+			}
+			if !isBusy {
+				dirNameInt, err := strconv.Atoi(d)
+				if err == nil {
+					freeDirs = append(freeDirs, dirNameInt)
+
+				}
+			}
+
+		}
+		if len(freeDirs) > 0 {
+			sort.Ints(freeDirs)
+			req.Name = fmt.Sprint(freeDirs[0])
+		}
+
 		if _, err := InsertNode(o.sql.db["main"], req); err != nil {
 			reply.Code = 9
 			reply.Error = true
@@ -1205,7 +1244,23 @@ func (o *NKNOVH) apiCreateServer(q *WSQuery, c *CLIENT) (err error, r WSReply) {
 		}
 	}
 	reply.Code = 0
-	reply.Value = map[string]interface{}{"Data": "OK"}
+	reply.Value = map[string]interface{}{"Data": req.Name}
 
 	return err, reply
+}
+
+func getDirectories(subdir string) ([]string, error) {
+	files, err := ioutil.ReadDir(subdir)
+	if err != nil {
+		return nil, err
+	}
+
+	var directories []string
+	for _, file := range files {
+		if file.IsDir() {
+			directories = append(directories, file.Name())
+		}
+	}
+
+	return directories, nil
 }

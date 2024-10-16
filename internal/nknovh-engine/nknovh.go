@@ -32,6 +32,7 @@ type NKNOVH struct {
 	WalletPath   string
 	WebPath      string
 	TemplatePath string
+	NodesPath    string
 }
 
 type Http struct {
@@ -103,6 +104,7 @@ func (o *NKNOVH) Build() error {
 	o.WalletPath = conf.WalletPath
 	o.WebPath = conf.WebPath
 	o.TemplatePath = conf.TemplatesPath
+	o.NodesPath = conf.NodesPath
 
 	if err := o.sql.createConnect(conf.Db, conf.DbType, "main"); err != nil {
 		return err

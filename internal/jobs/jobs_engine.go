@@ -8,15 +8,18 @@ import (
 	"net"
 	"os"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type JobsEngine struct {
 	db       *sql.DB
 	ctx      context.Context
 	interval time.Duration
+	log      *zap.Logger
 }
 
-func NewJobsEngine(dbConnectionString string, ctx context.Context, interval time.Duration) (*JobsEngine, error) {
+func NewJobsEngine(dbConnectionString string, ctx context.Context, interval time.Duration, logger *zap.Logger) (*JobsEngine, error) {
 	db, err := sql.Open("mysql", dbConnectionString)
 	if err != nil {
 		return nil, err
@@ -45,6 +48,30 @@ func NewJobsEngine(dbConnectionString string, ctx context.Context, interval time
 		}
 	}
 
-	return &JobsEngine{db: db, ctx: ctx, interval: interval}, nil
+	return &JobsEngine{db: db, ctx: ctx, interval: interval, log: logger}, nil
+
+}
+
+func (j *JobsEngine) Run() {
+	go func() {
+		select {
+		case <-j.ctx.Done():
+			j.log.Info("JOB DOWN")
+		default:
+			wn := WaitNode{}
+			list, err := wn.List(j.db)
+			if err != nil {
+				j.log.Error("Failed to list nodes", zap.Error(err))
+			}
+			for _, i := range list {
+				now := time.Now().UTC()
+				wait := i.CreatedAt.Add(time.Duration(i.Wait) * time.Hour)
+				if wait.After(now) {
+
+				}
+			}
+
+		}
+	}()
 
 }
