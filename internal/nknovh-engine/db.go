@@ -87,10 +87,10 @@ type ServerCreateRequest struct {
 }
 
 func InsertNode(db *sql.DB, node ServerCreateRequest) (int64, error) {
-	query := `INSERT INTO wait_nodes (name, ip, ssh_key, user, password, done, wait, use_proxy, created_at)
-			  VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)`
+	query := `INSERT INTO wait_nodes (name, ip, ssh_key, user, password, done, wait, use_proxy, created_at,step)
+			  VALUES (?, ?, ?, ?, ?, ?, ?, ?,?,?)`
 
-	result, err := db.Exec(query, node.Name, node.Ip, node.SSHKey, node.User, node.Password, false, node.WaitTime, node.UseProxy, time.Now().UTC())
+	result, err := db.Exec(query, node.Name, node.Ip, node.SSHKey, node.User, node.Password, false, node.WaitTime, node.UseProxy, time.Now().UTC(), "init")
 	if err != nil {
 		return 0, fmt.Errorf("error inserting node: %v", err)
 	}

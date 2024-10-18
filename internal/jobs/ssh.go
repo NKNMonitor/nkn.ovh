@@ -2,8 +2,11 @@ package jobs
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"os"
 
+	"github.com/bramvdbogaerde/go-scp"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/proxy"
 )
@@ -29,6 +32,24 @@ func (c *SSHClient) ExecuteCommand(command string) error {
 
 	if err := session.Run(command); err != nil {
 		return fmt.Errorf("failed to run command '%s': %v, stderr: %s", command, err, stderrBuf.String())
+	}
+	return nil
+}
+func (c *SSHClient) CopyFile(src, dst, perm string) error {
+
+	f, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("Fauled to open source file '%s': %v", src, err)
+	}
+
+	client, err := scp.NewClientBySSH(c.sshClient)
+	if err != nil {
+		return err
+	}
+
+	err = client.CopyFromFile(context.Background(), *f, dst, perm)
+	if err != nil {
+		return err
 	}
 	return nil
 }

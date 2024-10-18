@@ -10,6 +10,9 @@ type configuration struct {
 	WebPath       string `env:"WEB_PATH"`
 	TemplatesPath string `env:"TEMPLATE_PATH"`
 	NodesPath     string `env:"NODES_PATH"`
+	PoxyAddress   string `env:"PROXY_ADDRESS"`
+	ProxyLogin    string `env:"PROXY_LOGIN"`
+	ProxyPassword string `env:"PROXY_PASSWORD"`
 
 	NeighborPoll struct {
 		ConnTimeout    int `json:"ConnTimeout"`

@@ -88,6 +88,14 @@ type DBNode struct {
 	LastStatus string
 }
 
+func (o *NKNOVH) GetConfig() *configuration {
+	return o.conf
+
+}
+func (o *NKNOVH) GetLogger() *zap.Logger {
+	return o.log
+}
+
 func (o *NKNOVH) Build() error {
 
 	// Get configuration json file
